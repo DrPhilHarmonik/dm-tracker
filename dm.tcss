@@ -1,0 +1,222 @@
+/* ---- Global ---- */
+Screen {
+    background: #1a1a2e;
+}
+
+Header {
+    background: #16213e;
+    color: #e0e0e0;
+}
+
+Footer {
+    background: #16213e;
+}
+
+Button {
+    margin: 0 1;
+}
+
+/* ---- Dashboard ---- */
+#dashboard {
+    padding: 2 4;
+    height: 1fr;
+}
+
+#title {
+    text-align: center;
+    color: #c792ea;
+    text-style: bold;
+    margin-bottom: 2;
+    padding: 1;
+    border: solid #c792ea;
+}
+
+#cards {
+    layout: grid;
+    grid-size: 4 2;
+    grid-gutter: 1 2;
+    height: auto;
+    margin-bottom: 2;
+}
+
+.card {
+    height: 5;
+    content-align: center middle;
+    background: #16213e;
+    border: solid #0f3460;
+    text-align: center;
+}
+
+.card:hover {
+    background: #0f3460;
+    border: solid #c792ea;
+}
+
+#actions {
+    align: center middle;
+    height: auto;
+}
+
+/* ---- Entity List ---- */
+#list-container {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#list-toolbar {
+    height: auto;
+    margin-bottom: 1;
+    align: left middle;
+}
+
+#list-toolbar Input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+DataTable {
+    height: 1fr;
+    background: #16213e;
+}
+
+/* ---- Entity Detail ---- */
+#detail-scroll {
+    height: 1fr;
+    padding: 1 2;
+    background: #16213e;
+}
+
+#detail-actions {
+    height: auto;
+    padding: 1 2;
+    align: left middle;
+    background: #1a1a2e;
+}
+
+/* ---- Entity Form ---- */
+#form-scroll {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#form-fields {
+    height: auto;
+}
+
+#form-fields Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#form-fields Input {
+    width: 1fr;
+}
+
+#form-fields Select {
+    width: 1fr;
+}
+
+#form-fields TextArea {
+    height: 10;
+    width: 1fr;
+}
+
+#form-actions {
+    height: auto;
+    padding: 1 2;
+    align: left middle;
+    background: #1a1a2e;
+}
+
+/* ---- Relationship Form ---- */
+#rel-scroll {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#rel-form {
+    height: auto;
+}
+
+#rel-form Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#rel-form Select {
+    width: 1fr;
+}
+
+#rel-form Input {
+    width: 1fr;
+}
+
+#rel-actions {
+    height: auto;
+    padding: 1 2;
+    align: left middle;
+}
+
+/* ---- Delete Rel ---- */
+#delrel-container {
+    padding: 1 2;
+    height: 1fr;
+}
+
+#delrel-container ListView {
+    height: 1fr;
+    margin: 1 0;
+}
+
+/* ---- Confirm Modal ---- */
+#confirm-box {
+    width: 50;
+    height: auto;
+    padding: 2;
+    background: #16213e;
+    border: solid #c792ea;
+    align: center middle;
+    margin: auto;
+    layer: above;
+}
+
+#confirm-box Static {
+    margin-bottom: 1;
+    text-align: center;
+}
+
+#confirm-box Horizontal {
+    align: center middle;
+    height: auto;
+}
+
+ConfirmScreen {
+    align: center middle;
+    background: rgba(0,0,0,0.7);
+}
+
+/* ---- Export ---- */
+#export-container {
+    padding: 2 4;
+    height: 1fr;
+}
+
+#export-title {
+    text-style: bold;
+    color: #c3e88d;
+    margin-bottom: 2;
+}
+
+#export-container Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#export-container Input {
+    width: 1fr;
+    margin-bottom: 1;
+}
+
+#export-status {
+    margin-top: 1;
+}
