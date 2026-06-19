@@ -275,9 +275,9 @@ class EntityDetailScreen(Screen):
         yield Footer()
 
     def on_mount(self):
-        self._render()
+        self._render_detail()
 
-    def _render(self):
+    def _render_detail(self):
         entity = db.get_entity(self.entity_id)
         if not entity:
             self.dismiss()
@@ -325,13 +325,13 @@ class EntityDetailScreen(Screen):
 
     def action_edit(self):
         entity = db.get_entity(self.entity_id)
-        self.app.push_screen(EntityFormScreen(entity["type"], entity), callback=lambda _: self._render())
+        self.app.push_screen(EntityFormScreen(entity["type"], entity), callback=lambda _: self._render_detail())
 
     def action_add_rel(self):
-        self.app.push_screen(RelationshipFormScreen(self.entity_id), callback=lambda _: self._render())
+        self.app.push_screen(RelationshipFormScreen(self.entity_id), callback=lambda _: self._render_detail())
 
     def action_del_rel(self):
-        self.app.push_screen(DeleteRelScreen(self.entity_id), callback=lambda _: self._render())
+        self.app.push_screen(DeleteRelScreen(self.entity_id), callback=lambda _: self._render_detail())
 
 
 # ---------------------------------------------------------------------------
