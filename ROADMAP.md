@@ -132,6 +132,9 @@ These need a decision when we get to that phase, not now:
   of a flat field dump.
 - Markdown export includes formatted character sheets and active
   effects/encounter history where relevant.
+- CSS cleanup pass: button sizing/spacing across the sheet and roll-picker
+  screens is inconsistent (noted during manual Phase 2 testing) and should
+  be tightened up.
 - Full regression pass across all phases' tests.
 
 ## Status
