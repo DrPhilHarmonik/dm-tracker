@@ -58,22 +58,25 @@ class Dashboard(Screen):
         )
         yield Footer()
 
-    def on_mount(self):
-        self.refresh_cards()
+    async def on_mount(self):
+        await self.refresh_cards()
 
-    def refresh_cards(self):
+    async def on_screen_resume(self):
+        await self.refresh_cards()
+
+    async def refresh_cards(self):
         counts = db.entity_counts()
         cards = self.query_one("#cards")
-        cards.remove_children()
-        for type_ in ENTITY_TYPES:
-            count = counts.get(type_, 0)
-            label_plural = ENTITY_LABELS_PLURAL[type_]
-            card = Button(
-                f"[bold]{label_plural}[/bold]\n{count} entries",
+        await cards.remove_children()
+        new_cards = [
+            Button(
+                f"[bold]{ENTITY_LABELS_PLURAL[type_]}[/bold]\n{counts.get(type_, 0)} entries",
                 id=f"card-{type_}",
                 classes="card",
             )
-            cards.mount(card)
+            for type_ in ENTITY_TYPES
+        ]
+        await cards.mount(*new_cards)
 
     def on_button_pressed(self, event: Button.Pressed):
         btn_id = event.button.id
