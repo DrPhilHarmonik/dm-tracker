@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 
-ENTITY_TYPES = ["npc", "adventurer", "enemy", "location", "quest", "faction", "item", "session"]
+ENTITY_TYPES = ["npc", "adventurer", "enemy", "location", "quest", "faction", "item", "session", "encounter"]
 
 ENTITY_LABELS = {
     "npc": "NPC",
@@ -12,6 +12,7 @@ ENTITY_LABELS = {
     "faction": "Faction",
     "item": "Item",
     "session": "Session",
+    "encounter": "Encounter",
 }
 
 ENTITY_LABELS_PLURAL = {
@@ -23,6 +24,7 @@ ENTITY_LABELS_PLURAL = {
     "faction": "Factions",
     "item": "Items",
     "session": "Sessions",
+    "encounter": "Encounters",
 }
 
 ENTITY_ICONS = {
@@ -34,6 +36,7 @@ ENTITY_ICONS = {
     "faction": "users",
     "item": "gem",
     "session": "calendar",
+    "encounter": "swords",
 }
 
 # Each schema entry: (field_key, label, type, choices_or_None)
@@ -121,6 +124,10 @@ ENTITY_SCHEMAS: dict[str, list[tuple]] = {
         ("session_date", "Real Date (YYYY-MM-DD)", "text", None),
         ("in_game_date", "In-Game Date", "text", None),
         ("location", "Primary Location", "text", None),
+    ],
+    "encounter": [
+        ("status", "Status", "select", ["Planned", "Active", "Complete"]),
+        ("location", "Location", "text", None),
     ],
 }
 

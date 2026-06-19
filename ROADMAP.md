@@ -163,6 +163,27 @@ result + history log (not persisted to DB; resets when the screen closes,
 per the roadmap's "no persistent roll log" scope decision). 29/29 tests
 passing.
 
-Next up: **Phase 3** (encounter/combat tracker), which will use these same
-rolls for initiative and attacks, and introduce the "Make Hostile"
-NPC→Enemy conversion.
+**Phase 3: Done.** New `combat.py` module holds pure encounter-state logic
+(add/remove combatant, set initiative, start encounter, next turn/round with
+condition ticking and expiry) — HP itself is never duplicated, it's always
+read/written straight from the combatant's own character sheet so there's
+one source of truth. New `encounter` entity type (dashboard grid bumped to
+3x3 to fit all 9 types now). A `CombatTrackerScreen` (Combatants / HP &
+Conditions / Turn Controls tabs, plus an always-visible roster summary with
+a `->` marker on whoever's turn it is) is reachable from any encounter's
+detail view via the "Combat Tracker" button or `o` key. NPCs got a "Make
+Hostile" action (`h` key) that clones them into a linked Enemy via the
+`hostile form of` relationship — the original NPC is never mutated. 44/44
+tests passing.
+
+Fixed one real bug along the way: `Select.set_options()` always resets the
+widget's selection (it's documented behavior, not a quirk), so refreshing
+the combatant dropdowns after every action was silently wiping whichever
+combatant the DM had selected — meaning a second sequential action (e.g.
+adding a 2nd condition, or removing one) would silently no-op. Fixed by
+capturing and restoring the selected value around every `set_options()`
+call when it's still valid.
+
+Next up: **Phase 4** (active effects / time-tick system) — potions and
+buffs as duration-tracked stat modifiers, decremented by the same
+round-advancement logic `combat.py` already has.

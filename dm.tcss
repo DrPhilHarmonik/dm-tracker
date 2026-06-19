@@ -33,7 +33,7 @@ Button {
 
 #cards {
     layout: grid;
-    grid-size: 4 2;
+    grid-size: 3 3;
     grid-gutter: 1 2;
     height: auto;
     margin-bottom: 2;
@@ -419,5 +419,58 @@ ConfirmScreen {
 #roll-history {
     height: 8;
     background: #1a1a2e;
+    border: solid #0f3460;
+}
+
+/* ---- Combat Tracker ---- */
+#combat-tabs {
+    height: 1fr;
+}
+
+#combatants-scroll, #hp-conditions-scroll, #turn-controls-scroll {
+    height: 1fr;
+}
+
+#combatants-fields, #hp-conditions-fields, #turn-controls-fields {
+    height: auto;
+    padding: 1 2;
+}
+
+#combatants-fields Label, #hp-conditions-fields Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#combatants-fields Select, #hp-conditions-fields Select {
+    width: 1fr;
+}
+
+#combatants-fields Input, #hp-conditions-fields Input {
+    width: 1fr;
+}
+
+#initiative-actions, #hp-actions, #turn-advance-actions {
+    height: auto;
+    margin-top: 1;
+}
+
+#turn-controls-fields Button {
+    width: 1fr;
+    margin-top: 1;
+}
+
+#hp-conditions-fields ListView {
+    height: 6;
+    margin-top: 1;
+    margin-bottom: 1;
+    background: #1a1a2e;
+    border: solid #0f3460;
+}
+
+#combat-summary-scroll {
+    height: auto;
+    max-height: 14;
+    padding: 1 2;
+    background: #16213e;
     border: solid #0f3460;
 }
