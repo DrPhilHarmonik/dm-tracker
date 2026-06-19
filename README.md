@@ -45,6 +45,18 @@ Use the dashboard export action or press `e` to export Markdown files. The defau
 ~/campaign_vault
 ```
 
+A toggle on the export screen controls whether full character sheets and
+active effects are included (as structured YAML frontmatter plus a
+readable summary) or left out for a lighter, narrative-only vault.
+
+## Markdown Vault Import
+
+A vault exported by this app (not an arbitrary hand-authored Obsidian vault)
+can be imported back in from the Backup & Restore screen (`b` on the
+dashboard), or replace all current data. This round-trips entities, notes,
+relationships, character sheets, and active effects losslessly when the
+vault was exported with stats included.
+
 ## JSON Backup And Restore
 
 Create a full-fidelity JSON backup:

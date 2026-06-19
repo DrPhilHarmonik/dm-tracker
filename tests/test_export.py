@@ -195,3 +195,149 @@ def test_json_import_rejects_missing_relationship_target(monkeypatch, tmp_path):
 
     with pytest.raises(ValueError, match="missing entity"):
         export.import_json_backup(backup_path)
+
+
+def test_export_vault_includes_stats_by_default(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    adv_id = db.create_entity("adventurer", "Mira Thorn", {"race": "Half-Elf"}, "")
+    db.update_entity(adv_id, "Mira Thorn", {
+        "race": "Half-Elf",
+        "sheet": {"abilities": {"str": 12, "dex": 18, "con": 14, "int": 10, "wis": 10, "cha": 10}, "ac": 15},
+        "active_effects": [{"source": "Potion of Speed", "stat": "dex", "modifier": 2, "rounds_remaining": 3}],
+    }, "")
+
+    output_dir = tmp_path / "vault"
+    export.export_vault(output_dir, include_stats=True)
+    text = (output_dir / "Adventurer" / "Mira Thorn.md").read_text(encoding="utf-8")
+
+    assert "sheet:" in text
+    assert "active_effects:" in text
+    assert "## Character Sheet" in text
+    assert "DEX 20 (+5)" in text  # effective (buffed) value shown in prose
+    assert "Potion of Speed" in text
+
+
+def test_export_vault_can_exclude_stats(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    adv_id = db.create_entity("adventurer", "Mira Thorn", {"race": "Half-Elf"}, "")
+    db.update_entity(adv_id, "Mira Thorn", {
+        "race": "Half-Elf",
+        "sheet": {"abilities": {"str": 14, "dex": 14, "con": 14, "int": 14, "wis": 14, "cha": 14}},
+    }, "")
+
+    output_dir = tmp_path / "vault"
+    export.export_vault(output_dir, include_stats=False)
+    text = (output_dir / "Adventurer" / "Mira Thorn.md").read_text(encoding="utf-8")
+
+    assert "sheet:" not in text
+    assert "## Character Sheet" not in text
+    assert "- **Race:** Half-Elf" in text
+
+
+def test_vault_round_trips_entities_sheets_effects_and_relationships(monkeypatch, tmp_path):
+    source_db = tmp_path / "source.db"
+    monkeypatch.setenv("DM_DB_PATH", str(source_db))
+    db.init_db()
+
+    adv_id = db.create_entity("adventurer", "Mira Thorn", {"race": "Half-Elf", "class_name": "Rogue"},
+                               "A sharp-eyed rogue.\nSecond line.")
+    db.update_entity(adv_id, "Mira Thorn", {
+        "race": "Half-Elf", "class_name": "Rogue",
+        "sheet": {
+            "abilities": {"str": 12, "dex": 18, "con": 14, "int": 10, "wis": 10, "cha": 10},
+            "ac": 15, "hp_max": 32, "hp_current": 32,
+            "attacks": [{"name": "Shortsword", "bonus": 7, "damage": "1d6+4", "damage_type": "piercing"}],
+            "saving_throw_proficiencies": ["dex"],
+            "skill_proficiencies": {"stealth": "expertise"},
+        },
+        "active_effects": [{"source": "Potion of Speed", "stat": "dex", "modifier": 2, "rounds_remaining": 3}],
+    }, "A sharp-eyed rogue.\nSecond line.")
+    loc_id = db.create_entity("location", "Dockside Tavern", {"location_type": "Inn / Tavern"}, "")
+    db.create_relationship(adv_id, loc_id, "lives in", "Has a back room.\nReserved nightly.")
+
+    vault_dir = tmp_path / "vault"
+    export.export_vault(vault_dir, include_stats=True)
+
+    target_db = tmp_path / "target.db"
+    monkeypatch.setenv("DM_DB_PATH", str(target_db))
+    db.init_db()
+    result = export.import_vault(vault_dir)
+
+    assert result == {"entities": 2, "relationships": 1}
+
+    mira = db.list_entities("adventurer")[0]
+    assert mira["name"] == "Mira Thorn"
+    assert mira["notes"] == "A sharp-eyed rogue.\nSecond line."
+    assert mira["fields"]["sheet"]["abilities"]["dex"] == 18  # base value, not the buffed prose value
+    assert mira["fields"]["sheet"]["attacks"][0]["name"] == "Shortsword"
+    assert mira["fields"]["active_effects"][0]["source"] == "Potion of Speed"
+
+    rels = db.get_relationships(mira["id"])
+    assert len(rels) == 1
+    assert rels[0]["rel_type"] == "lives in"
+    assert rels[0]["to_name"] == "Dockside Tavern"
+    assert rels[0]["notes"] == "Has a back room.\nReserved nightly."
+
+
+def test_vault_import_refuses_non_empty_database_without_replace(monkeypatch, tmp_path):
+    source_db = tmp_path / "source.db"
+    monkeypatch.setenv("DM_DB_PATH", str(source_db))
+    db.init_db()
+    db.create_entity("npc", "Mira Thorn", {}, "")
+    vault_dir = tmp_path / "vault"
+    export.export_vault(vault_dir)
+
+    target_db = tmp_path / "target.db"
+    monkeypatch.setenv("DM_DB_PATH", str(target_db))
+    db.init_db()
+    existing_id = db.create_entity("npc", "Existing NPC", {}, "")
+
+    with pytest.raises(ValueError, match="non-empty database"):
+        export.import_vault(vault_dir)
+
+    assert db.get_entity(existing_id)["name"] == "Existing NPC"
+
+    result = export.import_vault(vault_dir, replace=True)
+    assert result == {"entities": 1, "relationships": 0}
+    assert db.list_entities()[0]["name"] == "Mira Thorn"
+
+
+def test_vault_import_rejects_missing_frontmatter(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    vault_dir = tmp_path / "vault"
+    vault_dir.mkdir()
+    (vault_dir / "broken.md").write_text("# No frontmatter here\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="missing YAML frontmatter"):
+        export.import_vault(vault_dir)
+
+
+def test_vault_import_rejects_unknown_entity_type(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    vault_dir = tmp_path / "vault"
+    vault_dir.mkdir()
+    (vault_dir / "broken.md").write_text(
+        "---\ntype: dragon_rider\nname: Test\n---\n\n# Test\n", encoding="utf-8"
+    )
+
+    with pytest.raises(ValueError, match="unknown entity type"):
+        export.import_vault(vault_dir)
+
+
+def test_vault_import_raises_when_directory_has_no_entity_files(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    empty_dir = tmp_path / "empty_vault"
+    empty_dir.mkdir()
+
+    with pytest.raises(ValueError, match="No entity files"):
+        export.import_vault(empty_dir)

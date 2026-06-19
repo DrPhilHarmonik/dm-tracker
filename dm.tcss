@@ -13,7 +13,50 @@ Footer {
 }
 
 Button {
-    margin: 0 1;
+    margin: 0 1 0 0;
+    min-width: 14;
+}
+
+Input, Select {
+    margin-bottom: 1;
+}
+
+Label {
+    color: #b2ccd6;
+}
+
+.action-row {
+    height: auto;
+    align: left middle;
+}
+
+#actions,
+#detail-actions,
+#form-actions,
+#rel-actions,
+#sheet-actions,
+#wizard-actions,
+#pending-rel-actions,
+#attack-actions,
+#special-actions,
+#wiz-attack-actions,
+#wiz-special-actions,
+#initiative-actions,
+#hp-actions,
+#turn-advance-actions,
+#roll-ability-actions,
+#roll-attack-actions {
+    height: auto;
+    align: left middle;
+}
+
+#backup-status,
+#restore-status,
+#vault-import-status,
+#export-status,
+#wizard-error,
+#roll-result {
+    min-height: 1;
 }
 
 /* ---- Dashboard ---- */
@@ -57,6 +100,10 @@ Button {
     height: auto;
 }
 
+#actions Button {
+    min-width: 20;
+}
+
 /* ---- Entity List ---- */
 #list-container {
     height: 1fr;
@@ -72,6 +119,10 @@ Button {
 #list-toolbar Input {
     width: 1fr;
     margin-right: 1;
+}
+
+#list-toolbar Button {
+    min-width: 18;
 }
 
 DataTable {
@@ -93,6 +144,10 @@ DataTable {
     background: #1a1a2e;
 }
 
+#detail-actions Button {
+    min-width: 16;
+}
+
 /* ---- Entity Form ---- */
 #form-scroll {
     height: 1fr;
@@ -105,7 +160,6 @@ DataTable {
 
 #form-fields Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #form-fields Input {
@@ -122,7 +176,6 @@ DataTable {
 }
 
 #pending-rel-actions {
-    height: auto;
     margin-top: 1;
 }
 
@@ -134,9 +187,7 @@ DataTable {
 }
 
 #form-actions {
-    height: auto;
     padding: 1 2;
-    align: left middle;
     background: #1a1a2e;
 }
 
@@ -152,7 +203,6 @@ DataTable {
 
 #rel-form Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #rel-form Select {
@@ -164,9 +214,7 @@ DataTable {
 }
 
 #rel-actions {
-    height: auto;
     padding: 1 2;
-    align: left middle;
 }
 
 /* ---- Delete Rel ---- */
@@ -197,8 +245,8 @@ DataTable {
 }
 
 #confirm-box Horizontal {
-    align: center middle;
     height: auto;
+    align: center middle;
 }
 
 ConfirmScreen {
@@ -220,16 +268,25 @@ ConfirmScreen {
 
 #export-container Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #export-container Input {
     width: 1fr;
-    margin-bottom: 1;
 }
 
 #export-status {
     margin-top: 1;
+}
+
+#export-stats-row {
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#export-stats-row Label {
+    margin-top: 0;
+    margin-left: 1;
 }
 
 /* ---- Global Search ---- */
@@ -243,28 +300,34 @@ ConfirmScreen {
 }
 
 /* ---- Backup / Restore ---- */
-#backup-container {
-    padding: 2 4;
+#backup-scroll {
     height: 1fr;
 }
 
-#backup-title {
+#backup-container {
+    padding: 2 4;
+    height: auto;
+}
+
+#backup-title, #vault-import-title {
     text-style: bold;
     color: #f78c6c;
     margin-bottom: 2;
 }
 
+#vault-import-title {
+    margin-top: 2;
+}
+
 #backup-container Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #backup-container Input {
     width: 1fr;
-    margin-bottom: 1;
 }
 
-#backup-status, #restore-status {
+#backup-status, #restore-status, #vault-import-status {
     margin: 1 0;
 }
 
@@ -316,7 +379,6 @@ ConfirmScreen {
 
 #combat-fields Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #combat-fields Input {
@@ -339,8 +401,11 @@ ConfirmScreen {
 }
 
 #attack-actions, #special-actions {
-    height: auto;
     margin-top: 1;
+}
+
+#attack-actions Button, #special-actions Button {
+    min-width: 20;
 }
 
 #attacks-fields ListView {
@@ -355,10 +420,12 @@ ConfirmScreen {
 }
 
 #sheet-actions {
-    height: auto;
     padding: 1 2;
-    align: left middle;
     background: #1a1a2e;
+}
+
+#sheet-actions Button {
+    min-width: 18;
 }
 
 /* ---- Roll Picker ---- */
@@ -377,7 +444,6 @@ ConfirmScreen {
 
 #roll-ability-fields Label, #roll-skill-fields Label, #roll-attack-fields Label, #roll-custom-fields Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #roll-ability-fields Select, #roll-skill-fields Select, #roll-attack-fields Select {
@@ -400,8 +466,11 @@ ConfirmScreen {
 }
 
 #roll-ability-actions, #roll-attack-actions {
-    height: auto;
     margin-top: 1;
+}
+
+#roll-ability-actions Button, #roll-attack-actions Button {
+    min-width: 20;
 }
 
 #roll-output {
@@ -438,7 +507,6 @@ ConfirmScreen {
 
 #combatants-fields Label, #hp-conditions-fields Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #combatants-fields Select, #hp-conditions-fields Select {
@@ -450,8 +518,11 @@ ConfirmScreen {
 }
 
 #initiative-actions, #hp-actions, #turn-advance-actions {
-    height: auto;
     margin-top: 1;
+}
+
+#initiative-actions Button, #hp-actions Button, #turn-advance-actions Button {
+    min-width: 18;
 }
 
 #turn-controls-fields Button {
@@ -487,7 +558,6 @@ ConfirmScreen {
 
 #effects-fields Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #effects-fields Input, #effects-fields Select {
@@ -514,7 +584,6 @@ ConfirmScreen {
 
 #wizard-step Label {
     margin-top: 1;
-    color: #b2ccd6;
 }
 
 #wizard-step Input, #wizard-step Select {
@@ -535,8 +604,11 @@ ConfirmScreen {
 }
 
 #wiz-attack-actions, #wiz-special-actions {
-    height: auto;
     margin-top: 1;
+}
+
+#wiz-attack-actions Button, #wiz-special-actions Button {
+    min-width: 20;
 }
 
 #wiz-review-summary {
@@ -547,9 +619,7 @@ ConfirmScreen {
 }
 
 #wizard-actions {
-    height: auto;
     padding: 1 2;
-    align: left middle;
     background: #1a1a2e;
 }
 
@@ -560,4 +630,8 @@ ConfirmScreen {
 
 #wizard-nav {
     height: auto;
+}
+
+#wizard-nav Button {
+    min-width: 18;
 }

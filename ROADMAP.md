@@ -236,6 +236,96 @@ wizard in Enemy/Quick mode, prefilled from the source NPC, rather than
 eagerly creating a bare Enemy before any stats exist — cancelling out of the
 wizard leaves no orphaned entity. 61/61 tests passing.
 
-Next up: **Phase 6** (polish & export integration) — character sheets and
-active effects in the Markdown export, the deferred button-sizing CSS
-cleanup, and a full regression pass.
+**Export/import upgrade: Done** (pulled forward from Phase 6, requested
+mid-Phase-5). Markdown export now has an `include_stats` toggle (Switch on
+the Export screen, default on): when enabled, each adventurer/enemy's full
+character sheet and active effects are written as structured YAML in the
+frontmatter (the single source of truth for round-tripping) plus a
+human-readable "## Character Sheet" prose section showing *effective*
+(buffed) stats — never the reverse, so re-importing never accidentally
+bakes a temporary buff into the permanent sheet. New `export.import_vault()`
+parses a vault this app produced (frontmatter + Notes + Relationships
+sections) back into entities and relationships; wired into the Backup &
+Restore screen alongside the existing JSON path, with the same
+non-empty-database guard. Explicitly scoped to vaults this app wrote, not
+arbitrary hand-authored Obsidian vaults. 68/68 tests passing.
+
+Next up: **Phase 6** (remaining polish) — the deferred button-sizing CSS
+cleanup and a full regression pass.
+
+## Forward Plan
+
+### Phase 6 — Polish & Stability
+
+Goal: tighten the current feature set before adding another major workflow.
+
+- **CSS/layout cleanup:** standardize action rows, button widths, form
+  spacing, status messages, and long tab layouts across sheet, roll picker,
+  combat, wizard, export, and backup screens.
+- **Full regression pass:** run the existing suite after each cleanup pass and
+  do a manual smoke test of the core TUI flows: create entity, wizard create,
+  edit character sheet, roll dice, apply effect, run combat, export/import,
+  backup/restore.
+- **Error messaging pass:** keep broad UI-level exception handling for display,
+  but make the underlying export/import/backup failures more specific
+  (validation error, missing path, parse error, permission/filesystem error).
+
+### Phase 7 — Maintainability Refactor
+
+Goal: make future features cheaper by reducing `app.py` from one large module
+into screen-focused modules without changing behavior.
+
+- Extract shared UI pieces first: `DismissableScreen`, palette, common
+  status/error helpers, and select-option preservation helpers.
+- Split screens by feature area:
+  - `screens/dashboard.py`
+  - `screens/entities.py`
+  - `screens/sheet.py`
+  - `screens/dice.py`
+  - `screens/combat.py`
+  - `screens/effects.py`
+  - `screens/wizard.py`
+  - `screens/backup.py`
+- Keep the first pass mechanical: move code, update imports, run tests. Avoid
+  behavioral cleanup until the moved code is stable.
+- Add focused tests around any helper extracted from screen code.
+
+### Phase 8 — UI Interaction Tests
+
+Goal: cover the Textual behavior that pure unit tests cannot catch.
+
+- Add Textual pilot tests for screen callback and dismissal behavior, since
+  this has already produced real bugs.
+- Cover wizard cancellation, "Make Hostile" cancellation, dropdown refreshes
+  after combat actions, effect add/remove refreshes, and backup/export button
+  status updates.
+- Add a small end-to-end happy path using a temporary `DM_DB_PATH`: create an
+  adventurer, assign sheet values, roll, apply an effect, add to combat, export
+  a vault.
+
+### Phase 9 — Data Integrity Layer
+
+Goal: prevent invalid campaign data from entering through UI, CLI, import, or
+future automation.
+
+- Validate entity type and relationship type in `db.create_entity()`,
+  `db.update_entity()`, and `db.create_relationship()`.
+- Add schema-level validation for known flat fields and sheet/effect/combat
+  shapes before persistence.
+- Consider a thin service layer for higher-level operations such as hostile
+  conversion, combat mutations, backup restore, and vault import so the UI is
+  not responsible for maintaining invariants.
+- Add tests for invalid types, malformed JSON-shaped fields, missing
+  relationship targets, and replace/import edge cases.
+
+### Phase 10 — Session Workflow
+
+Goal: build the next user-facing workflow on top of the stable core.
+
+- Add a session prep/run view that gathers active quests, active encounters,
+  notable NPCs, recent notes, unresolved relationships, and quick roll/combat
+  actions.
+- Let session notes link to entities during play and optionally export as an
+  Obsidian-friendly session log.
+- Keep this workflow read-heavy at first; add mutation shortcuts only after
+  the information layout feels useful.
