@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
 
 
-ENTITY_TYPES = ["npc", "adventurer", "location", "quest", "faction", "item", "session"]
+ENTITY_TYPES = ["npc", "adventurer", "enemy", "location", "quest", "faction", "item", "session"]
 
 ENTITY_LABELS = {
     "npc": "NPC",
     "adventurer": "Adventurer",
+    "enemy": "Enemy",
     "location": "Location",
     "quest": "Quest",
     "faction": "Faction",
@@ -16,6 +17,7 @@ ENTITY_LABELS = {
 ENTITY_ICONS = {
     "npc": "person",
     "adventurer": "shield",
+    "enemy": "skull",
     "location": "map-pin",
     "quest": "scroll",
     "faction": "users",
@@ -48,6 +50,16 @@ ENTITY_SCHEMAS: dict[str, list[tuple]] = {
             "Lawful Evil", "Neutral Evil", "Chaotic Evil", "Unknown",
         ]),
         ("status", "Status", "select", ["Active", "Retired", "Dead", "Missing"]),
+    ],
+    "enemy": [
+        ("creature_type", "Creature Type", "text", None),
+        ("cr", "Challenge Rating", "text", None),
+        ("alignment", "Alignment", "select", [
+            "Lawful Good", "Neutral Good", "Chaotic Good",
+            "Lawful Neutral", "True Neutral", "Chaotic Neutral",
+            "Lawful Evil", "Neutral Evil", "Chaotic Evil", "Unaligned",
+        ]),
+        ("status", "Status", "select", ["Alive", "Defeated", "Fled", "Unknown"]),
     ],
     "location": [
         ("location_type", "Type", "select", [
@@ -123,4 +135,5 @@ RELATIONSHIP_TYPES = [
     "worships",
     "created",
     "related to",
+    "hostile form of",
 ]

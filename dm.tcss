@@ -267,3 +267,96 @@ ConfirmScreen {
 #backup-status, #restore-status {
     margin: 1 0;
 }
+
+/* ---- Character Sheet ---- */
+#sheet-tabs {
+    height: 1fr;
+}
+
+#abilities-scroll, #combat-scroll, #skills-scroll, #attacks-scroll {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#abilities-fields, #combat-fields, #skills-fields, #attacks-fields {
+    height: auto;
+}
+
+.ability-row, .save-row, .skill-row {
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+.ability-label {
+    width: 16;
+}
+
+.ability-input {
+    width: 8;
+    margin-right: 2;
+}
+
+.ability-mod {
+    width: 6;
+    color: #c3e88d;
+    text-style: bold;
+}
+
+.save-label, .skill-label {
+    width: 24;
+}
+
+.save-bonus, .skill-bonus {
+    width: 6;
+    margin-left: 2;
+    color: #c3e88d;
+    text-style: bold;
+}
+
+#combat-fields Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#combat-fields Input {
+    width: 1fr;
+}
+
+#combat-fields Static#sheet-prof-bonus {
+    color: #c3e88d;
+    text-style: bold;
+}
+
+#attack-inputs, #special-inputs {
+    height: auto;
+    margin-top: 1;
+}
+
+#attack-inputs Input, #special-inputs Input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+#attack-actions, #special-actions {
+    height: auto;
+    margin-top: 1;
+}
+
+#attacks-fields ListView {
+    height: 6;
+    margin-bottom: 1;
+    background: #1a1a2e;
+    border: solid #0f3460;
+}
+
+#attacks-fields Static {
+    margin-top: 1;
+}
+
+#sheet-actions {
+    height: auto;
+    padding: 1 2;
+    align: left middle;
+    background: #1a1a2e;
+}
