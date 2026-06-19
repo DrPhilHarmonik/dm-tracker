@@ -147,5 +147,19 @@ Traits) is reachable from any adventurer/enemy's detail view via the
 formatted summary of the sheet. `hostile form of` relationship type added in
 preparation for Phase 3's NPC→Enemy conversion. 16/16 tests passing.
 
-Next up: **Phase 2** (dice rolling engine), which reads ability scores and
-proficiency bonus off this same sheet shape.
+**Phase 2: Done.** New `dice.py` module: a generic notation parser/roller
+(`2d6+3`, `4d6kh3`/`kl3` for keep-highest/lowest, signed multi-term
+expressions) plus 5e-aware wrappers (`roll_d20` with advantage/disadvantage,
+`roll_ability_check`, `roll_saving_throw`, `roll_skill_check`, `roll_attack`,
+`roll_damage`) that pull bonuses straight from a normalized sheet via
+`sheet.py`. A `RollPickerScreen` (reachable from any adventurer/enemy's
+detail view via the "Roll Dice" button or `k` key) offers four tabs —
+Ability/Save, Skills, Attacks, Custom — each rollable with
+advantage/disadvantage toggles where relevant, with an in-session roll
+result + history log (not persisted to DB; resets when the screen closes,
+per the roadmap's "no persistent roll log" scope decision). 29/29 tests
+passing.
+
+Next up: **Phase 3** (encounter/combat tracker), which will use these same
+rolls for initiative and attacks, and introduce the "Make Hostile"
+NPC→Enemy conversion.

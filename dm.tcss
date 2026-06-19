@@ -360,3 +360,64 @@ ConfirmScreen {
     align: left middle;
     background: #1a1a2e;
 }
+
+/* ---- Roll Picker ---- */
+#roll-tabs {
+    height: 1fr;
+}
+
+#roll-ability-scroll, #roll-skill-scroll, #roll-attack-scroll, #roll-custom-scroll {
+    height: 1fr;
+}
+
+#roll-ability-fields, #roll-skill-fields, #roll-attack-fields, #roll-custom-fields {
+    height: auto;
+    padding: 1 2;
+}
+
+#roll-ability-fields Label, #roll-skill-fields Label, #roll-attack-fields Label, #roll-custom-fields Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#roll-ability-fields Select, #roll-skill-fields Select, #roll-attack-fields Select {
+    width: 1fr;
+}
+
+#roll-custom-fields Input {
+    width: 1fr;
+}
+
+#roll-ability-mode, #roll-skill-mode, #roll-attack-mode {
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+}
+
+#roll-ability-mode Label, #roll-skill-mode Label {
+    margin-right: 2;
+    margin-top: 0;
+}
+
+#roll-ability-actions, #roll-attack-actions {
+    height: auto;
+    margin-top: 1;
+}
+
+#roll-output {
+    height: auto;
+    max-height: 12;
+    padding: 1 2;
+    background: #16213e;
+    border: solid #0f3460;
+}
+
+#roll-result {
+    margin-bottom: 1;
+}
+
+#roll-history {
+    height: 8;
+    background: #1a1a2e;
+    border: solid #0f3460;
+}
