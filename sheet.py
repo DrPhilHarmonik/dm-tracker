@@ -186,3 +186,11 @@ def skill_bonus(sheet: dict, skill: str, prof_bonus: int) -> int:
 
 def initiative_bonus(sheet: dict) -> int:
     return ability_modifier(sheet["abilities"].get("dex", 10))
+
+
+def matches_standard_array(scores: dict) -> bool:
+    return sorted(scores.values()) == sorted(STANDARD_ARRAY)
+
+
+def suggested_ac(dex_modifier: int) -> int:
+    return 10 + dex_modifier

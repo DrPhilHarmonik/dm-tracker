@@ -70,3 +70,18 @@ def test_proficiency_bonus_dispatches_on_entity_type():
     enemy_sheet = sheet.normalize_sheet({"cr": "9"})
     assert sheet.proficiency_bonus("adventurer", adventurer_sheet) == 4
     assert sheet.proficiency_bonus("enemy", enemy_sheet) == 4
+
+
+def test_matches_standard_array_accepts_any_permutation():
+    scores = {"str": 8, "dex": 15, "con": 10, "int": 14, "wis": 12, "cha": 13}
+    assert sheet.matches_standard_array(scores) is True
+
+
+def test_matches_standard_array_rejects_invalid_set():
+    scores = {a: 10 for a in sheet.ABILITIES}
+    assert sheet.matches_standard_array(scores) is False
+
+
+def test_suggested_ac_uses_dex_modifier():
+    assert sheet.suggested_ac(3) == 13
+    assert sheet.suggested_ac(-1) == 9

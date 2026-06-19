@@ -211,6 +211,31 @@ Fixed by adding a shared `DismissableScreen` base class
 (`action_dismiss_screen` → `self.dismiss()`) and switching every affected
 screen and "Back"/"Cancel" button handler to it.
 
-Next up: **Phase 5** (NPC/Adventurer/Enemy creation wizard) — a guided,
-multi-step character builder using the Standard Array, reusable for the
-Phase 3 "Make Hostile" flow's stat-filling step.
+**Phase 5: Done.** New `classes.py` reference module (the 12 core 5e
+classes, hit dice, suggested saving throws) plus `sheet.matches_standard_array()`
+and `sheet.suggested_ac()`. A `WizardScreen` in `app.py` supports all three
+entity types with two modes:
+
+- **NPC**: single Basic Info step (race/role/alignment/status/location) ->
+  Review & Create. Quick and Advanced collapse to the same thing since NPCs
+  carry no stat block.
+- **Adventurer/Enemy, Quick mode**: Basic Info -> Class & Level (or CR &
+  Creature Type) -> Standard Array ability scores -> Review & Create (shows
+  suggested AC/HP, editable before saving) -> drops straight into the
+  Character Sheet screen to fill in skills/attacks afterward.
+- **Adventurer/Enemy, Advanced mode**: same as Quick, plus inline Skills &
+  Saving Throws and Attacks & Traits steps before Review, so the whole
+  character is complete by the time it's created.
+
+Saving throws are suggested from the class's two SRD save proficiencies and
+editable; ability scores are validated as a true Standard Array permutation
+(reset-to-default button included) rather than letting the DM type any six
+numbers. Entry point is two new buttons ("Quick Wizard" / "Advanced Wizard")
+on every entity list screen. "Make Hostile" (Phase 3) now routes through the
+wizard in Enemy/Quick mode, prefilled from the source NPC, rather than
+eagerly creating a bare Enemy before any stats exist — cancelling out of the
+wizard leaves no orphaned entity. 61/61 tests passing.
+
+Next up: **Phase 6** (polish & export integration) — character sheets and
+active effects in the Markdown export, the deferred button-sizing CSS
+cleanup, and a full regression pass.

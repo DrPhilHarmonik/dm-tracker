@@ -501,3 +501,63 @@ ConfirmScreen {
     background: #1a1a2e;
     border: solid #0f3460;
 }
+
+/* ---- Creation Wizard ---- */
+#wizard-scroll {
+    height: 1fr;
+    padding: 1 2;
+}
+
+#wizard-step {
+    height: auto;
+}
+
+#wizard-step Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#wizard-step Input, #wizard-step Select {
+    width: 1fr;
+}
+
+#wizard-step ListView {
+    height: 6;
+    margin-top: 1;
+    margin-bottom: 1;
+    background: #1a1a2e;
+    border: solid #0f3460;
+}
+
+#wiz-attack-inputs Input, #wiz-special-inputs Input {
+    width: 1fr;
+    margin-right: 1;
+}
+
+#wiz-attack-actions, #wiz-special-actions {
+    height: auto;
+    margin-top: 1;
+}
+
+#wiz-review-summary {
+    margin: 1 0;
+    background: #16213e;
+    border: solid #0f3460;
+    padding: 1 2;
+}
+
+#wizard-actions {
+    height: auto;
+    padding: 1 2;
+    align: left middle;
+    background: #1a1a2e;
+}
+
+#wizard-error {
+    color: #ff5370;
+    margin-bottom: 1;
+}
+
+#wizard-nav {
+    height: auto;
+}
