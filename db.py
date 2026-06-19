@@ -1,14 +1,23 @@
 import sqlite3
 import json
+import os
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path.home() / ".config" / "dm" / "campaign.db"
+DEFAULT_DB_PATH = Path.home() / ".config" / "dm" / "campaign.db"
+
+
+def db_path() -> Path:
+    configured = os.environ.get("DM_DB_PATH")
+    if configured:
+        return Path(configured).expanduser()
+    return DEFAULT_DB_PATH
 
 
 def get_conn():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    path = db_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
@@ -39,6 +48,12 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_rel_from ON relationships(from_id);
             CREATE INDEX IF NOT EXISTS idx_rel_to ON relationships(to_id);
         """)
+
+
+def reset_db():
+    with get_conn() as conn:
+        conn.execute("DELETE FROM relationships")
+        conn.execute("DELETE FROM entities")
 
 
 def now():
@@ -94,6 +109,17 @@ def list_entities(type_: str = None, search: str = None) -> list[dict]:
         return [_row(r) for r in rows]
 
 
+def search_all(search: str) -> list[dict]:
+    like = f"%{search}%"
+    sql = (
+        "SELECT * FROM entities WHERE name LIKE ? OR notes LIKE ? "
+        "ORDER BY name COLLATE NOCASE"
+    )
+    with get_conn() as conn:
+        rows = conn.execute(sql, (like, like)).fetchall()
+        return [_row(r) for r in rows]
+
+
 def _row(row) -> dict | None:
     if row is None:
         return None
@@ -132,6 +158,55 @@ def get_relationships(entity_id: int) -> list[dict]:
     with get_conn() as conn:
         rows = conn.execute(sql, (entity_id, entity_id)).fetchall()
         return [dict(r) for r in rows]
+
+
+def list_relationships() -> list[dict]:
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM relationships ORDER BY id"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def replace_all(entities: list[dict], relationships: list[dict]):
+    with get_conn() as conn:
+        conn.execute("DELETE FROM relationships")
+        conn.execute("DELETE FROM entities")
+        conn.executemany(
+            """
+            INSERT INTO entities (id, type, name, fields, notes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    entity["id"],
+                    entity["type"],
+                    entity["name"],
+                    json.dumps(entity["fields"]),
+                    entity.get("notes", ""),
+                    entity["created_at"],
+                    entity["updated_at"],
+                )
+                for entity in entities
+            ],
+        )
+        conn.executemany(
+            """
+            INSERT INTO relationships (id, from_id, to_id, rel_type, notes, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (
+                    relationship["id"],
+                    relationship["from_id"],
+                    relationship["to_id"],
+                    relationship["rel_type"],
+                    relationship.get("notes", ""),
+                    relationship["created_at"],
+                )
+                for relationship in relationships
+            ],
+        )
 
 
 def entity_counts() -> dict[str, int]:

@@ -121,6 +121,18 @@ DataTable {
     width: 1fr;
 }
 
+#pending-rel-actions {
+    height: auto;
+    margin-top: 1;
+}
+
+#form-fields ListView {
+    height: 6;
+    margin-top: 1;
+    background: #1a1a2e;
+    border: solid #0f3460;
+}
+
 #form-actions {
     height: auto;
     padding: 1 2;
@@ -176,9 +188,8 @@ DataTable {
     background: #16213e;
     border: solid #c792ea;
     align: center middle;
-    margin: auto;
-    layer: above;
 }
+
 
 #confirm-box Static {
     margin-bottom: 1;
@@ -219,4 +230,40 @@ ConfirmScreen {
 
 #export-status {
     margin-top: 1;
+}
+
+/* ---- Global Search ---- */
+#global-search-container {
+    padding: 1 2;
+    height: 1fr;
+}
+
+#global-search-container Input {
+    margin-bottom: 1;
+}
+
+/* ---- Backup / Restore ---- */
+#backup-container {
+    padding: 2 4;
+    height: 1fr;
+}
+
+#backup-title {
+    text-style: bold;
+    color: #f78c6c;
+    margin-bottom: 2;
+}
+
+#backup-container Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#backup-container Input {
+    width: 1fr;
+    margin-bottom: 1;
+}
+
+#backup-status, #restore-status {
+    margin: 1 0;
 }
