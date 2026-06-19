@@ -10,6 +10,7 @@ import export as exp
 import sheet as shm
 import dice
 import combat as cbt
+import effects as fx
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 from pathlib import Path
 
@@ -25,6 +26,20 @@ PALETTE = {
     "session":    "#b2ccd6",
     "encounter":  "#f07178",
 }
+
+
+class DismissableScreen(Screen):
+    """Screen base for the common 'Escape to go back' binding.
+
+    Plain app.pop_screen() silently discards any callback registered via
+    push_screen(..., callback=...) without calling it -- only
+    Screen.dismiss() actually invokes it. Screens that need their caller to
+    refresh on return must dismiss(), not pop_screen(), so this is the
+    binding target every such screen should use instead.
+    """
+
+    def action_dismiss_screen(self):
+        self.dismiss()
 
 
 # ---------------------------------------------------------------------------
@@ -111,9 +126,9 @@ class Dashboard(Screen):
 # Entity List
 # ---------------------------------------------------------------------------
 
-class EntityListScreen(Screen):
+class EntityListScreen(DismissableScreen):
     BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back"),
+        Binding("escape", "dismiss_screen", "Back"),
         Binding("a", "add", "Add"),
         Binding("d", "delete", "Delete"),
         Binding("enter", "open_selected", "Open"),
@@ -204,9 +219,9 @@ class EntityListScreen(Screen):
 # Global Search
 # ---------------------------------------------------------------------------
 
-class GlobalSearchScreen(Screen):
+class GlobalSearchScreen(DismissableScreen):
     BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back"),
+        Binding("escape", "dismiss_screen", "Back"),
         Binding("enter", "open_selected", "Open"),
     ]
 
@@ -259,8 +274,10 @@ class GlobalSearchScreen(Screen):
 # Entity Detail
 # ---------------------------------------------------------------------------
 
-def _format_sheet_lines(entity_type: str, raw_sheet: dict) -> list[str]:
-    sheet = shm.normalize_sheet(raw_sheet)
+def _format_sheet_lines(entity_type: str, raw_sheet: dict, raw_effects: list | None = None) -> list[str]:
+    base_sheet = shm.normalize_sheet(raw_sheet)
+    active_effects = fx.normalize_effects(raw_effects)
+    sheet = fx.apply_to_sheet(base_sheet, active_effects)
     pb = shm.proficiency_bonus(entity_type, sheet)
 
     lines = ["", "[bold]Character Sheet:[/]"]
@@ -315,12 +332,19 @@ def _format_sheet_lines(entity_type: str, raw_sheet: dict) -> list[str]:
         if sheet[key]:
             lines.append(f"  {label}: {sheet[key]}")
 
+    if active_effects:
+        lines.append("  Active Effects:")
+        for effect in active_effects:
+            duration = f"{effect['rounds_remaining']} rounds left" if effect["rounds_remaining"] is not None else "indefinite"
+            modifier = shm.format_modifier(effect["modifier"])
+            lines.append(f"    {effect['source']}: {modifier} {fx.STAT_LABELS[effect['stat']]} ({duration})")
+
     return lines
 
 
-class EntityDetailScreen(Screen):
+class EntityDetailScreen(DismissableScreen):
     BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back"),
+        Binding("escape", "dismiss_screen", "Back"),
         Binding("e", "edit", "Edit"),
         Binding("r", "add_rel", "Add Relation"),
         Binding("d", "del_rel", "Delete Relation"),
@@ -328,6 +352,7 @@ class EntityDetailScreen(Screen):
         Binding("k", "open_roll", "Roll Dice"),
         Binding("h", "make_hostile", "Make Hostile"),
         Binding("o", "open_combat", "Combat Tracker"),
+        Binding("f", "open_effects", "Effects"),
     ]
 
     def __init__(self, entity_id: int):
@@ -358,6 +383,7 @@ class EntityDetailScreen(Screen):
             await actions.mount(
                 Button("Character Sheet", id="btn-sheet", variant="warning"),
                 Button("Roll Dice", id="btn-roll", variant="success"),
+                Button("Effects", id="btn-effects", variant="default"),
             )
         if entity["type"] == "npc":
             await actions.mount(Button("Make Hostile", id="btn-hostile", variant="error"))
@@ -382,7 +408,7 @@ class EntityDetailScreen(Screen):
                 lines.append(f"[bold]{label}:[/] {val}")
 
         if entity["type"] in shm.SHEET_ENTITY_TYPES:
-            lines.extend(_format_sheet_lines(entity["type"], entity["fields"].get("sheet", {})))
+            lines.extend(_format_sheet_lines(entity["type"], entity["fields"].get("sheet", {}), entity["fields"].get("active_effects", [])))
 
         if rels:
             lines.append("")
@@ -411,7 +437,7 @@ class EntityDetailScreen(Screen):
         elif event.button.id == "btn-rel":
             self.action_add_rel()
         elif event.button.id == "btn-back":
-            self.app.pop_screen()
+            self.dismiss()
         elif event.button.id == "btn-sheet":
             self.action_open_sheet()
         elif event.button.id == "btn-roll":
@@ -420,6 +446,8 @@ class EntityDetailScreen(Screen):
             self.action_make_hostile()
         elif event.button.id == "btn-combat":
             self.action_open_combat()
+        elif event.button.id == "btn-effects":
+            self.action_open_effects()
 
     def action_edit(self):
         entity = db.get_entity(self.entity_id)
@@ -468,6 +496,11 @@ class EntityDetailScreen(Screen):
         entity = db.get_entity(self.entity_id)
         if entity and entity["type"] == "encounter":
             self.app.push_screen(CombatTrackerScreen(self.entity_id), callback=lambda _: self._render_detail())
+
+    def action_open_effects(self):
+        entity = db.get_entity(self.entity_id)
+        if entity and entity["type"] in shm.SHEET_ENTITY_TYPES:
+            self.app.push_screen(EffectsScreen(self.entity_id), callback=lambda _: self._render_detail())
 
 
 # ---------------------------------------------------------------------------
@@ -776,8 +809,8 @@ class CharacterSheetScreen(Screen):
 # Roll Picker
 # ---------------------------------------------------------------------------
 
-class RollPickerScreen(Screen):
-    BINDINGS = [Binding("escape", "app.pop_screen", "Back")]
+class RollPickerScreen(DismissableScreen):
+    BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
 
     HISTORY_LIMIT = 20
 
@@ -787,7 +820,8 @@ class RollPickerScreen(Screen):
         entity = db.get_entity(entity_id)
         self.entity_type = entity["type"]
         self.entity_name = entity["name"]
-        self.sheet = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        base_sheet = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        self.sheet = fx.apply_to_sheet(base_sheet, entity["fields"].get("active_effects", []))
         self.history: list[str] = []
 
     def compose(self) -> ComposeResult:
@@ -935,14 +969,15 @@ class RollPickerScreen(Screen):
 # Combat Tracker
 # ---------------------------------------------------------------------------
 
-class CombatTrackerScreen(Screen):
-    BINDINGS = [Binding("escape", "app.pop_screen", "Back")]
+class CombatTrackerScreen(DismissableScreen):
+    BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
 
     def __init__(self, entity_id: int):
         super().__init__()
         self.entity_id = entity_id
         entity = db.get_entity(entity_id)
         self.combat = cbt.normalize_combat(entity["fields"].get("combat", {}))
+        self.round_notices: list[str] = []
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -1065,6 +1100,25 @@ class CombatTrackerScreen(Screen):
         fields["status"] = status
         db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
 
+    def _effective_sheet(self, entity: dict) -> dict:
+        base_sheet = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        return fx.apply_to_sheet(base_sheet, entity["fields"].get("active_effects", []))
+
+    def _tick_combatant_effects(self):
+        notices = []
+        for c in self.combat["combatants"]:
+            entity = db.get_entity(c["entity_id"])
+            if not entity:
+                continue
+            kept, expired = fx.tick_effects(entity["fields"].get("active_effects", []))
+            if expired:
+                fields = dict(entity["fields"])
+                fields["active_effects"] = kept
+                db.update_entity(c["entity_id"], entity["name"], fields, entity["notes"])
+                for effect in expired:
+                    notices.append(f"{effect['source']} wore off on {entity['name']}")
+        self.round_notices = notices
+
     def _refresh_summary(self):
         lines = [
             f"[bold]Round {self.combat['round']}[/]  -  {'Started' if self.combat['started'] else 'Not Started'}",
@@ -1075,7 +1129,7 @@ class CombatTrackerScreen(Screen):
             entity = db.get_entity(c["entity_id"])
             if not entity:
                 continue
-            sheet_data = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+            sheet_data = self._effective_sheet(entity)
             marker = "-> " if current and current["entity_id"] == c["entity_id"] else "   "
             color = PALETTE.get(entity["type"], "#ffffff")
             cond_str = ", ".join(
@@ -1084,10 +1138,15 @@ class CombatTrackerScreen(Screen):
             ) or "none"
             lines.append(
                 f"{marker}[bold {color}]{entity['name']}[/] - Init {c['initiative']} - "
-                f"HP {sheet_data['hp_current']}/{sheet_data['hp_max']} - Conditions: {cond_str}"
+                f"HP {sheet_data['hp_current']}/{sheet_data['hp_max']} - AC {sheet_data['ac']} - Conditions: {cond_str}"
             )
         if not self.combat["combatants"]:
             lines.append("[dim]No combatants yet. Add some on the Combatants tab.[/dim]")
+        if self.round_notices:
+            lines.append("")
+            lines.append("[bold yellow]Notices:[/]")
+            for notice in self.round_notices:
+                lines.append(f"  {notice}")
         self.query_one("#combat-summary", Static).update("\n".join(lines))
 
     def _refresh_conditions_list(self, entity_id: int):
@@ -1136,7 +1195,7 @@ class CombatTrackerScreen(Screen):
         entity = db.get_entity(entity_id)
         if not entity:
             return
-        sheet_data = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        sheet_data = self._effective_sheet(entity)
         dex_mod = shm.ability_modifier(sheet_data["abilities"]["dex"])
         result = dice.roll_d20(dex_mod)
         self.combat = cbt.set_initiative(self.combat, entity_id, result.total)
@@ -1147,7 +1206,7 @@ class CombatTrackerScreen(Screen):
             entity = db.get_entity(c["entity_id"])
             if not entity:
                 continue
-            sheet_data = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+            sheet_data = self._effective_sheet(entity)
             dex_mod = shm.ability_modifier(sheet_data["abilities"]["dex"])
             result = dice.roll_d20(dex_mod)
             self.combat = cbt.set_initiative(self.combat, c["entity_id"], result.total)
@@ -1234,10 +1293,16 @@ class CombatTrackerScreen(Screen):
         elif bid == "btn-start-encounter":
             self._start_encounter()
         elif bid == "btn-next-turn":
+            old_round = self.combat["round"]
             self.combat = cbt.next_turn(self.combat)
+            if self.combat["round"] != old_round:
+                self._tick_combatant_effects()
             self._persist()
         elif bid == "btn-next-round":
+            old_round = self.combat["round"]
             self.combat = cbt.next_round(self.combat)
+            if self.combat["round"] != old_round:
+                self._tick_combatant_effects()
             self._persist()
         elif bid == "btn-end-encounter":
             self._end_encounter()
@@ -1249,6 +1314,95 @@ class CombatTrackerScreen(Screen):
             self._add_condition()
         elif bid == "btn-remove-condition":
             self._remove_condition()
+
+
+# ---------------------------------------------------------------------------
+# Active Effects
+# ---------------------------------------------------------------------------
+
+class EffectsScreen(DismissableScreen):
+    BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
+
+    def __init__(self, entity_id: int):
+        super().__init__()
+        self.entity_id = entity_id
+        entity = db.get_entity(entity_id)
+        self.effects = fx.normalize_effects(entity["fields"].get("active_effects", []))
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        yield ScrollableContainer(
+            Container(
+                Label("Source"),
+                Input(placeholder="e.g. Potion of Giant Strength", id="input-effect-source"),
+                Label("Stat"),
+                Select(
+                    [(fx.STAT_LABELS[s], s) for s in fx.MODIFIABLE_STATS],
+                    id="sel-effect-stat", allow_blank=False, value=fx.MODIFIABLE_STATS[0],
+                ),
+                Label("Modifier (signed, e.g. 4 or -2)"),
+                Input(placeholder="4", id="input-effect-modifier"),
+                Label("Rounds Remaining (blank = indefinite)"),
+                Input(placeholder="10", id="input-effect-rounds"),
+                Button("+ Add Effect", id="btn-add-effect", variant="success"),
+                Label("Current Effects (select one, then Remove)"),
+                ListView(id="list-effects"),
+                Button("Remove Selected", id="btn-remove-effect", variant="error"),
+                id="effects-fields",
+            ),
+            id="effects-scroll",
+        )
+        yield Footer()
+
+    def on_mount(self):
+        entity = db.get_entity(self.entity_id)
+        self.title = f"{entity['name']} - Active Effects"
+        self._refresh_list()
+
+    def _refresh_list(self):
+        lv = self.query_one("#list-effects", ListView)
+        lv.clear()
+        for effect in self.effects:
+            duration = f"{effect['rounds_remaining']} rounds left" if effect["rounds_remaining"] is not None else "indefinite"
+            modifier = shm.format_modifier(effect["modifier"])
+            lv.append(ListItem(Label(f"{effect['source']}: {modifier} {fx.STAT_LABELS[effect['stat']]} ({duration})")))
+
+    def _persist(self):
+        entity = db.get_entity(self.entity_id)
+        fields = dict(entity["fields"])
+        fields["active_effects"] = self.effects
+        db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
+        self._refresh_list()
+
+    def _add_effect(self):
+        source = self.query_one("#input-effect-source", Input).value.strip()
+        if not source:
+            return
+        stat = str(self.query_one("#sel-effect-stat", Select).value)
+        modifier_raw = self.query_one("#input-effect-modifier", Input).value.strip()
+        try:
+            modifier = int(modifier_raw)
+        except ValueError:
+            return
+        rounds_raw = self.query_one("#input-effect-rounds", Input).value.strip()
+        rounds = int(rounds_raw) if rounds_raw else None
+        self.effects = fx.add_effect(self.effects, source, stat, modifier, rounds)
+        for widget_id in ("#input-effect-source", "#input-effect-modifier", "#input-effect-rounds"):
+            self.query_one(widget_id, Input).value = ""
+        self._persist()
+
+    def _remove_effect(self):
+        lv = self.query_one("#list-effects", ListView)
+        if lv.index is None:
+            return
+        self.effects = fx.remove_effect(self.effects, lv.index)
+        self._persist()
+
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "btn-add-effect":
+            self._add_effect()
+        elif event.button.id == "btn-remove-effect":
+            self._remove_effect()
 
 
 # ---------------------------------------------------------------------------
@@ -1529,8 +1683,8 @@ class ConfirmScreen(ModalScreen):
 # Export Screen
 # ---------------------------------------------------------------------------
 
-class ExportScreen(Screen):
-    BINDINGS = [Binding("escape", "app.pop_screen", "Back")]
+class ExportScreen(DismissableScreen):
+    BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -1560,15 +1714,15 @@ class ExportScreen(Screen):
             except Exception as ex:
                 self.query_one("#export-status", Static).update(f"[red]Error: {ex}[/red]")
         elif event.button.id == "btn-cancel":
-            self.app.pop_screen()
+            self.dismiss()
 
 
 # ---------------------------------------------------------------------------
 # Backup / Restore
 # ---------------------------------------------------------------------------
 
-class BackupScreen(Screen):
-    BINDINGS = [Binding("escape", "app.pop_screen", "Back")]
+class BackupScreen(DismissableScreen):
+    BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -1604,7 +1758,7 @@ class BackupScreen(Screen):
                 callback=self._on_replace_confirmed,
             )
         elif event.button.id == "btn-back":
-            self.app.pop_screen()
+            self.dismiss()
 
     def _on_replace_confirmed(self, confirmed: bool):
         if confirmed:

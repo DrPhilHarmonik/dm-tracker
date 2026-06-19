@@ -184,6 +184,33 @@ adding a 2nd condition, or removing one) would silently no-op. Fixed by
 capturing and restoring the selected value around every `set_options()`
 call when it's still valid.
 
-Next up: **Phase 4** (active effects / time-tick system) — potions and
-buffs as duration-tracked stat modifiers, decremented by the same
-round-advancement logic `combat.py` already has.
+**Phase 4: Done.** New `effects.py` module: active effects (potions, buffs,
+magic items) live in an entity's `fields["active_effects"]` list, never
+baked into the base sheet. Scope decision: effects modify the six abilities,
+AC, or speed (covers "potion of strength," "ring of protection," "boots of
+speed"); multiple effects on the same stat simply stack additively — no
+attempt to replicate 5e's same-named-bonus rules. `apply_to_sheet()`
+computes an effective sheet on read; the roll picker, combat tracker
+(initiative rolls and the AC shown in the roster summary), and the entity
+detail view all use the effective sheet now, never the base one. Effects
+only decay on combat round-advance (`tick_effects()`, wired into
+`CombatTrackerScreen`'s Next Turn/Next Round, matching the round-scoped time
+system decided at the start — nothing decays outside combat). Expired
+effects are removed and surfaced as a notice (e.g. "Potion of Giant Strength
+wore off on Mira Thorn"). New "Effects" screen (`f` key) on any
+adventurer/enemy's detail view to add/remove effects. 52/52 tests passing.
+
+Fixed a real, fairly serious bug while wiring the Effects screen's Escape
+binding: `app.pop_screen()` silently discards any callback registered via
+`push_screen(..., callback=...)` without invoking it — only
+`Screen.dismiss()` actually fires it. Every screen using
+`Binding("escape", "app.pop_screen", ...)` whose caller expected a refresh
+on return (the entity detail view returning from Combat Tracker or Effects,
+the entity list returning from detail) was silently never refreshing.
+Fixed by adding a shared `DismissableScreen` base class
+(`action_dismiss_screen` → `self.dismiss()`) and switching every affected
+screen and "Back"/"Cancel" button handler to it.
+
+Next up: **Phase 5** (NPC/Adventurer/Enemy creation wizard) — a guided,
+multi-step character builder using the Standard Array, reusable for the
+Phase 3 "Make Hostile" flow's stat-filling step.
