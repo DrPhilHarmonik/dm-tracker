@@ -8,7 +8,7 @@ from rich.text import Text
 import db
 import export as exp
 import sheet as shm
-from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
+from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 from pathlib import Path
 
 
@@ -67,9 +67,9 @@ class Dashboard(Screen):
         cards.remove_children()
         for type_ in ENTITY_TYPES:
             count = counts.get(type_, 0)
-            label = ENTITY_LABELS[type_]
+            label_plural = ENTITY_LABELS_PLURAL[type_]
             card = Button(
-                f"[bold]{label}s[/bold]\n{count} entries",
+                f"[bold]{label_plural}[/bold]\n{count} entries",
                 id=f"card-{type_}",
                 classes="card",
             )
@@ -117,12 +117,13 @@ class EntityListScreen(Screen):
         super().__init__()
         self.type_ = type_
         self.label = ENTITY_LABELS[type_]
+        self.label_plural = ENTITY_LABELS_PLURAL[type_]
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Container(
             Horizontal(
-                Input(placeholder=f"Search {self.label}s...", id="search"),
+                Input(placeholder=f"Search {self.label_plural}...", id="search"),
                 Button("+ Add", id="btn-add", variant="primary"),
                 id="list-toolbar",
             ),
@@ -132,7 +133,7 @@ class EntityListScreen(Screen):
         yield Footer()
 
     def on_mount(self):
-        self.title = f"{self.label}s"
+        self.title = self.label_plural
         table = self.query_one(DataTable)
         table.add_columns("Name", *[label for _, label, _, _ in ENTITY_SCHEMAS.get(self.type_, [])][:3])
         self._load()

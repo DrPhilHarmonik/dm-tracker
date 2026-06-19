@@ -14,6 +14,17 @@ ENTITY_LABELS = {
     "session": "Session",
 }
 
+ENTITY_LABELS_PLURAL = {
+    "npc": "NPCs",
+    "adventurer": "Adventurers",
+    "enemy": "Enemies",
+    "location": "Locations",
+    "quest": "Quests",
+    "faction": "Factions",
+    "item": "Items",
+    "session": "Sessions",
+}
+
 ENTITY_ICONS = {
     "npc": "person",
     "adventurer": "shield",
