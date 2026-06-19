@@ -136,6 +136,16 @@ These need a decision when we get to that phase, not now:
 
 ## Status
 
-Not started. Recommended starting point: **Phase 1**, since every later
-phase (dice, combat, effects, wizard) reads from the character sheet schema
-it defines.
+**Phase 1: Done.** New `sheet.py` module holds the 5e math (ability
+modifiers, proficiency bonus by level/CR, saving throw and skill bonuses)
+and a `normalize_sheet()` that fills in defaults for any sheet missing
+fields. New `enemy` entity type added alongside `adventurer`, both backed by
+the same nested `fields["sheet"]` JSON shape. A dedicated tabbed
+`CharacterSheetScreen` (Abilities / Combat / Skills & Saves / Attacks &
+Traits) is reachable from any adventurer/enemy's detail view via the
+"Character Sheet" button or `c` key; the entity detail view also renders a
+formatted summary of the sheet. `hostile form of` relationship type added in
+preparation for Phase 3's NPC→Enemy conversion. 16/16 tests passing.
+
+Next up: **Phase 2** (dice rolling engine), which reads ability scores and
+proficiency bonus off this same sheet shape.
