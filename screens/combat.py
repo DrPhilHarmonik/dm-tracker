@@ -33,7 +33,7 @@ class CombatTrackerScreen(DismissableScreen):
         with TabbedContent(id="combat-tabs"):
             with TabPane("Combatants", id="tab-combatants"):
                 yield ScrollableContainer(Container(id="combatants-fields"), id="combatants-scroll")
-            with TabPane("HP & Conditions", id="tab-hp-conditions"):
+            with TabPane("Attacks & HP", id="tab-hp-conditions"):
                 yield ScrollableContainer(Container(id="hp-conditions-fields"), id="hp-conditions-scroll")
             with TabPane("Turn Controls", id="tab-turn-controls"):
                 yield ScrollableContainer(Container(id="turn-controls-fields"), id="turn-controls-scroll")
@@ -49,6 +49,7 @@ class CombatTrackerScreen(DismissableScreen):
         await self._build_hp_conditions_tab()
         await self._build_turn_controls_tab()
         self._refresh_summary()
+        self._sync_attacker_to_current_turn()
 
     # -- option helpers ---------------------------------------------------
 
@@ -76,9 +77,10 @@ class CombatTrackerScreen(DismissableScreen):
 
     def _refresh_combatant_selects(self):
         options = self._combatant_options()
-        for select_id in ("#sel-initiative-target", "#sel-remove-combatant", "#sel-hp-target"):
+        for select_id in ("#sel-initiative-target", "#sel-remove-combatant", "#sel-hp-target", "#sel-attack-attacker"):
             self._set_options_preserving_selection(self.query_one(select_id, Select), options)
         self._set_options_preserving_selection(self.query_one("#sel-add-combatant", Select), self._available_entity_options())
+        self._refresh_attack_choices()
 
     # -- tab builders -------------------------------------------------
 
@@ -104,7 +106,22 @@ class CombatTrackerScreen(DismissableScreen):
     async def _build_hp_conditions_tab(self):
         container = self.query_one("#hp-conditions-fields")
         await container.mount(
-            Label("Combatant"),
+            Label("Attacker (defaults to whoever's turn it is)"),
+            Select(self._combatant_options(), id="sel-attack-attacker", prompt="Choose attacker..."),
+            Label("Attack"),
+            Select([], id="sel-attack-choice", prompt="Choose attack..."),
+            Horizontal(
+                Switch(id="attack-adv"), Label("Advantage"),
+                Switch(id="attack-dis"), Label("Disadvantage"),
+                id="attack-roll-mode",
+            ),
+            Horizontal(
+                Button("Roll to Hit", id="btn-roll-attack-hit", variant="primary"),
+                Button("Roll Damage", id="btn-roll-attack-damage", variant="warning"),
+                id="attack-roll-actions",
+            ),
+            Static("Pick an attacker, an attack, and a target below, then roll.", id="attack-roll-result"),
+            Label("Target / Combatant (also used for Apply Damage/Heal below)"),
             Select(self._combatant_options(), id="sel-hp-target", prompt="Choose combatant..."),
             Label("HP Amount"),
             Input(placeholder="Amount", id="input-hp-amount"),
@@ -263,6 +280,82 @@ class CombatTrackerScreen(DismissableScreen):
             self.combat = cbt.set_initiative(self.combat, c["entity_id"], result.total)
         self._persist()
 
+    # -- attack/damage rolling --------------------------------------------
+
+    def _attack_options_for(self, entity_id: int):
+        entity = db.get_entity(entity_id)
+        if not entity:
+            return []
+        sheet_data = self._effective_sheet(entity)
+        return [
+            (f"{atk.get('name', '?')} ({shm.format_modifier(int(atk.get('bonus', 0) or 0))})", str(i))
+            for i, atk in enumerate(sheet_data["attacks"])
+        ]
+
+    def _refresh_attack_choices(self):
+        attacker_sel = self.query_one("#sel-attack-attacker", Select)
+        options = [] if attacker_sel.value is Select.NULL else self._attack_options_for(int(str(attacker_sel.value)))
+        select = self.query_one("#sel-attack-choice", Select)
+        self._set_options_preserving_selection(select, options)
+        if select.value is Select.NULL and options:
+            select.value = options[0][1]
+
+    def _sync_attacker_to_current_turn(self):
+        current = cbt.current_combatant(self.combat) if self.combat["started"] else None
+        if current is None:
+            return
+        sel = self.query_one("#sel-attack-attacker", Select)
+        entity_id_str = str(current["entity_id"])
+        if any(value == entity_id_str for _, value in self._combatant_options()):
+            sel.value = entity_id_str
+        self._refresh_attack_choices()
+
+    def _selected_attack(self):
+        attacker_sel = self.query_one("#sel-attack-attacker", Select)
+        attack_sel = self.query_one("#sel-attack-choice", Select)
+        if attacker_sel.value is Select.NULL or attack_sel.value is Select.NULL:
+            return None, None
+        attacker_entity = db.get_entity(int(str(attacker_sel.value)))
+        if not attacker_entity:
+            return None, None
+        sheet_data = self._effective_sheet(attacker_entity)
+        index = int(str(attack_sel.value))
+        if index >= len(sheet_data["attacks"]):
+            return None, None
+        return attacker_entity, sheet_data["attacks"][index]
+
+    def _roll_attack_to_hit(self):
+        attacker_entity, attack = self._selected_attack()
+        if not attack:
+            return
+        self._last_attack = attack
+        adv = self.query_one("#attack-adv", Switch).value
+        dis = self.query_one("#attack-dis", Switch).value
+        result = dice.roll_attack(attack, advantage=adv, disadvantage=dis)
+
+        text = f"{attacker_entity['name']} - {attack.get('name', '?')} to-hit: {result.detail}"
+        target_sel = self.query_one("#sel-hp-target", Select)
+        if target_sel.value is not Select.NULL:
+            target_entity = db.get_entity(int(str(target_sel.value)))
+            if target_entity:
+                target_ac = self._effective_sheet(target_entity)["ac"]
+                hit = result.total >= target_ac
+                tag = "[bold green]HIT[/]" if hit else "[bold red]MISS[/]"
+                text += f"  ->  {tag} (AC {target_ac})"
+        self.query_one("#attack-roll-result", Static).update(text)
+
+    def _roll_attack_damage(self):
+        attack = getattr(self, "_last_attack", None)
+        if not attack:
+            return
+        result = dice.roll_damage(attack)
+        self.query_one("#attack-roll-result", Static).update(f"{attack.get('name', '?')} damage: {result.detail}")
+        self.query_one("#input-hp-amount", Input).value = str(result.total)
+
+    @on(Select.Changed, "#sel-attack-attacker")
+    def _on_attack_attacker_changed(self, event: Select.Changed):
+        self._refresh_attack_choices()
+
     def _start_encounter(self):
         self.combat = cbt.start_encounter(self.combat)
         self._set_encounter_status("Active")
@@ -343,18 +436,21 @@ class CombatTrackerScreen(DismissableScreen):
             self._roll_all_initiative()
         elif bid == "btn-start-encounter":
             self._start_encounter()
+            self._sync_attacker_to_current_turn()
         elif bid == "btn-next-turn":
             old_round = self.combat["round"]
             self.combat = cbt.next_turn(self.combat)
             if self.combat["round"] != old_round:
                 self._tick_combatant_effects()
             self._persist()
+            self._sync_attacker_to_current_turn()
         elif bid == "btn-next-round":
             old_round = self.combat["round"]
             self.combat = cbt.next_round(self.combat)
             if self.combat["round"] != old_round:
                 self._tick_combatant_effects()
             self._persist()
+            self._sync_attacker_to_current_turn()
         elif bid == "btn-end-encounter":
             self._end_encounter()
         elif bid == "btn-damage":
@@ -365,3 +461,7 @@ class CombatTrackerScreen(DismissableScreen):
             self._add_condition()
         elif bid == "btn-remove-condition":
             self._remove_condition()
+        elif bid == "btn-roll-attack-hit":
+            self._roll_attack_to_hit()
+        elif bid == "btn-roll-attack-damage":
+            self._roll_attack_damage()

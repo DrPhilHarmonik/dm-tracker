@@ -516,12 +516,29 @@ ConfirmScreen {
     width: 1fr;
 }
 
-#initiative-actions, #hp-actions, #turn-advance-actions {
+#initiative-actions, #hp-actions, #turn-advance-actions, #attack-roll-actions {
     margin-top: 1;
 }
 
-#initiative-actions Button, #hp-actions Button, #turn-advance-actions Button {
+#initiative-actions Button, #hp-actions Button, #turn-advance-actions Button, #attack-roll-actions Button {
     min-width: 18;
+}
+
+#attack-roll-mode {
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+}
+
+#attack-roll-mode Label {
+    margin-top: 0;
+    margin-right: 2;
+}
+
+#attack-roll-result {
+    margin: 1 0;
+    color: #c3e88d;
+    text-style: bold;
 }
 
 #turn-controls-fields Button {
