@@ -210,6 +210,35 @@ def _format_sheet_markdown(entity_type: str, raw_sheet: dict, raw_effects: list)
     return lines
 
 
+def _combat_for_export(combat: dict) -> dict:
+    """Vault import reassigns entity ids sequentially, so a raw entity_id
+    inside combat.combatants would silently point at the wrong entity after
+    re-import -- unlike relationships, which are resolved by name via
+    wikilinks. Swap entity_id for entity_name here; _combatants_from_import
+    swaps it back once the new ids are known."""
+    combat = dict(combat)
+    combatants = []
+    for c in combat.get("combatants", []):
+        entity = db.get_entity(c["entity_id"])
+        if entity is None:
+            continue
+        combatants.append({**{k: v for k, v in c.items() if k != "entity_id"}, "entity_name": entity["name"]})
+    combat["combatants"] = combatants
+    return combat
+
+
+def _combatants_from_import(combat: dict, name_to_id: dict) -> dict:
+    combat = dict(combat)
+    combatants = []
+    for c in combat.get("combatants", []):
+        entity_id = name_to_id.get(c.get("entity_name"))
+        if entity_id is None:
+            continue
+        combatants.append({**{k: v for k, v in c.items() if k != "entity_name"}, "entity_id": entity_id})
+    combat["combatants"] = combatants
+    return combat
+
+
 def _render_entity(entity: dict, include_stats: bool = True) -> str:
     schema = ENTITY_SCHEMAS.get(entity["type"], [])
     fields = entity["fields"]
@@ -229,7 +258,7 @@ def _render_entity(entity: dict, include_stats: bool = True) -> str:
         if entity["type"] in shm.SHEET_ENTITY_TYPES and fields.get("active_effects"):
             frontmatter["active_effects"] = fields["active_effects"]
         if entity["type"] == "encounter" and fields.get("combat"):
-            frontmatter["combat"] = fields["combat"]
+            frontmatter["combat"] = _combat_for_export(fields["combat"])
     frontmatter["created"] = entity["created_at"][:10]
     frontmatter["updated"] = entity["updated_at"][:10]
 
@@ -405,6 +434,10 @@ def import_vault(input_dir: Path, *, replace: bool = False) -> dict[str, int]:
             "updated_at": updated_at,
         })
         name_to_id[item["name"]] = index
+
+    for entity in entities_to_insert:
+        if "combat" in entity["fields"]:
+            entity["fields"]["combat"] = _combatants_from_import(entity["fields"]["combat"], name_to_id)
 
     relationships_to_insert = []
     next_rel_id = 1

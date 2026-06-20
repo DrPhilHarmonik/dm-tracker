@@ -341,3 +341,42 @@ def test_vault_import_raises_when_directory_has_no_entity_files(monkeypatch, tmp
 
     with pytest.raises(ValueError, match="No entity files"):
         export.import_vault(empty_dir)
+
+
+def test_vault_round_trip_preserves_encounter_combatant_identity(monkeypatch, tmp_path):
+    """Regression: vault re-import reassigns entity ids sequentially, so a
+    raw entity_id inside combat.combatants would silently point at the
+    wrong entity after re-import unless it's resolved by name like
+    relationships are."""
+    source_db = tmp_path / "source.db"
+    monkeypatch.setenv("DM_DB_PATH", str(source_db))
+    db.init_db()
+
+    adv_id = db.create_entity("adventurer", "Mira Thorn", {}, "")
+    enemy_id = db.create_entity("enemy", "Goblin Boss", {}, "")
+    # an unrelated entity that sorts between the others alphabetically, so a
+    # naive sequential id reassignment on import would silently shift
+    # the combatant references onto it if name-based resolution were broken
+    db.create_entity("item", "Dagger", {}, "")
+    enc_id = db.create_entity("encounter", "Tavern Brawl", {
+        "combat": {
+            "round": 1, "turn_index": 0, "started": False,
+            "combatants": [
+                {"entity_id": adv_id, "initiative": 15, "conditions": []},
+                {"entity_id": enemy_id, "initiative": 10, "conditions": []},
+            ],
+        },
+    }, "")
+
+    vault_dir = tmp_path / "vault"
+    export.export_vault(vault_dir, include_stats=True)
+
+    target_db = tmp_path / "target.db"
+    monkeypatch.setenv("DM_DB_PATH", str(target_db))
+    db.init_db()
+    export.import_vault(vault_dir)
+
+    restored_encounter = db.list_entities("encounter")[0]
+    combatants = restored_encounter["fields"]["combat"]["combatants"]
+    names = {db.get_entity(c["entity_id"])["name"] for c in combatants}
+    assert names == {"Mira Thorn", "Goblin Boss"}
