@@ -19,6 +19,13 @@ from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCH
 from screens.common import DismissableScreen, PALETTE, schema_choices, tint_border
 from screens.sheet import SKILL_LEVEL_OPTIONS
 
+# The only entity types the wizard knows how to build: a stat-block-guided
+# flow for adventurer/enemy, and a basic-info-only flow for npc. Everything
+# else (location, quest, faction, item, session, encounter) already has an
+# adequate single-screen "+ Add" form and has no wizard steps defined.
+WIZARD_ENTITY_TYPES = ("npc", "adventurer", "enemy")
+
+
 class WizardScreen(DismissableScreen):
     """Guided multi-step character creation.
 

@@ -22,7 +22,7 @@ from screens.sheet import CharacterSheetScreen
 from screens.roll import RollPickerScreen
 from screens.combat import CombatTrackerScreen
 from screens.effects import EffectsScreen
-from screens.wizard import WizardScreen
+from screens.wizard import WizardScreen, WIZARD_ENTITY_TYPES
 
 class EntityListScreen(DismissableScreen):
     BINDINGS = [
@@ -45,8 +45,6 @@ class EntityListScreen(DismissableScreen):
             Horizontal(
                 Input(placeholder=f"Search {self.label_plural}...", id="search"),
                 Button("+ Add", id="btn-add", variant="primary"),
-                Button("Quick Wizard", id="btn-wizard-quick", variant="success"),
-                Button("Advanced Wizard", id="btn-wizard-advanced", variant="warning"),
                 id="list-toolbar",
             ),
             DataTable(id="entity-table", cursor_type="row"),
@@ -54,11 +52,16 @@ class EntityListScreen(DismissableScreen):
         )
         yield Footer()
 
-    def on_mount(self):
+    async def on_mount(self):
         self.title = self.label_plural
         table = self.query_one(DataTable)
         table.add_columns("Name", *[label for _, label, _, _ in ENTITY_SCHEMAS.get(self.type_, [])][:3])
         tint_border(table, self.type_)
+        if self.type_ in WIZARD_ENTITY_TYPES:
+            await self.query_one("#list-toolbar").mount(
+                Button("Quick Wizard", id="btn-wizard-quick", variant="success"),
+                Button("Advanced Wizard", id="btn-wizard-advanced", variant="warning"),
+            )
         self._load()
 
     def _load(self, search: str = None):
