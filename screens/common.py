@@ -1,3 +1,6 @@
+import json
+
+import yaml
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.widgets import Header, Footer, Label, Button, DataTable, Input, Select, TextArea, Static, ListView, ListItem, TabbedContent, TabPane, Switch
@@ -48,3 +51,29 @@ def schema_choices(entity_type: str, key: str) -> list[str]:
         if field_key == key:
             return choices or []
     return []
+
+
+def format_io_error(ex: Exception) -> str:
+    """Categorize export/import/backup failures into a clearer UI message.
+
+    json.JSONDecodeError is a ValueError subclass, so it's checked first;
+    the permission/missing-path/directory cases are all OSError subclasses
+    and likewise need to come before the generic OSError fallback.
+    """
+    if isinstance(ex, json.JSONDecodeError):
+        return f"Could not parse JSON: {ex}"
+    if isinstance(ex, yaml.YAMLError):
+        return f"Could not parse vault YAML frontmatter: {ex}"
+    if isinstance(ex, PermissionError):
+        return f"Permission denied: {ex.filename or ex}"
+    if isinstance(ex, FileNotFoundError):
+        return f"Path not found: {ex.filename or ex}"
+    if isinstance(ex, IsADirectoryError):
+        return f"Expected a file but found a directory: {ex.filename or ex}"
+    if isinstance(ex, NotADirectoryError):
+        return f"Expected a directory but found a file: {ex.filename or ex}"
+    if isinstance(ex, ValueError):
+        return f"Validation error: {ex}"
+    if isinstance(ex, OSError):
+        return f"Filesystem error: {ex}"
+    return f"Unexpected error: {ex}"

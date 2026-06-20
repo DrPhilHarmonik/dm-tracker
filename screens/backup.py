@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE
+from screens.common import DismissableScreen, PALETTE, format_io_error
 from screens.modals import ConfirmScreen
 
 class ExportScreen(DismissableScreen):
@@ -54,7 +54,7 @@ class ExportScreen(DismissableScreen):
                     f"[green]Exported {count} entities to {out_path}[/green]"
                 )
             except Exception as ex:
-                self.query_one("#export-status", Static).update(f"[red]Error: {ex}[/red]")
+                self.query_one("#export-status", Static).update(f"[red]{format_io_error(ex)}[/red]")
         elif event.button.id == "btn-cancel":
             self.dismiss()
 
@@ -134,7 +134,7 @@ class BackupScreen(DismissableScreen):
             count = exp.export_json_backup(path)
             self.query_one("#backup-status", Static).update(f"[green]Backed up {count} entities to {path}[/green]")
         except Exception as ex:
-            self.query_one("#backup-status", Static).update(f"[red]Error: {ex}[/red]")
+            self.query_one("#backup-status", Static).update(f"[red]{format_io_error(ex)}[/red]")
 
     def _do_restore(self, replace: bool):
         path = Path(self.query_one("#restore-path", Input).value.strip()).expanduser()
@@ -144,7 +144,7 @@ class BackupScreen(DismissableScreen):
                 f"[green]Restored {result['entities']} entities and {result['relationships']} relationships[/green]"
             )
         except Exception as ex:
-            self.query_one("#restore-status", Static).update(f"[red]Error: {ex}[/red]")
+            self.query_one("#restore-status", Static).update(f"[red]{format_io_error(ex)}[/red]")
 
     def _do_vault_import(self, replace: bool):
         path = Path(self.query_one("#vault-import-path", Input).value.strip()).expanduser()
@@ -154,4 +154,4 @@ class BackupScreen(DismissableScreen):
                 f"[green]Imported {result['entities']} entities and {result['relationships']} relationships[/green]"
             )
         except Exception as ex:
-            self.query_one("#vault-import-status", Static).update(f"[red]Error: {ex}[/red]")
+            self.query_one("#vault-import-status", Static).update(f"[red]{format_io_error(ex)}[/red]")

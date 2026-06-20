@@ -270,6 +270,19 @@ Goal: tighten the current feature set before adding another major workflow.
   but make the underlying export/import/backup failures more specific
   (validation error, missing path, parse error, permission/filesystem error).
 
+**Status: Done.** CSS cleanup landed earlier (standardized action-row/button
+patterns, consolidated status-message rules across sheet, roll, combat,
+wizard, export, and backup screens). New `screens/common.format_io_error()`
+categorizes export/import/backup failures (JSON parse, YAML parse,
+permission, missing path, is-a-directory, generic validation, generic
+filesystem) instead of showing raw exception text for all of them; wired
+into all four failure points in `screens/backup.py`. Full regression pass:
+76/76 tests green, plus an end-to-end headless smoke run through every core
+flow in one continuous session (quick-add → wizard create → character sheet
+edit → roll → apply effect → run a combat round → export → JSON backup →
+vault re-import with replace) confirming state carries correctly across all
+of them.
+
 ### Phase 7 — Maintainability Refactor
 
 Goal: make future features cheaper by reducing `app.py` from one large module
