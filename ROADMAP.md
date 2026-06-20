@@ -364,6 +364,39 @@ future automation.
 - Add tests for invalid types, malformed JSON-shaped fields, missing
   relationship targets, and replace/import edge cases.
 
+**Status: Done.** `db.py` is the single chokepoint every write path already
+goes through (UI/wizard, CLI flags, JSON restore, vault import all end up
+calling `create_entity`/`update_entity`/`create_relationship`/`replace_all`),
+so validation landed there instead of a separate service layer -- the
+"consider a thin service layer" idea turned out unnecessary once the
+existing chokepoint was hardened.
+
+- `validate_entity_type()` / `validate_relationship_type()`: reject anything
+  not in `models.ENTITY_TYPES` / `RELATIONSHIP_TYPES`.
+- `validate_fields()` (used by `create_entity`/`update_entity`, the live
+  single-entity paths): rejects unknown flat field keys and out-of-range
+  select/number values for the entity's type, then normalizes the
+  `sheet`/`active_effects`/`combat` sub-shapes via the existing
+  `sheet.normalize_sheet()`/`effects.normalize_effects()`/
+  `combat.normalize_combat()` (deliberately lenient about missing keys).
+- `normalize_special_fields()` (used by `replace_all`, the bulk-import
+  path): only normalizes the sub-shapes, intentionally skipping the strict
+  flat-field checks so restoring an older backup whose schema has since
+  changed doesn't fail on fields that were valid when it was taken.
+- `replace_all` validates every entity/relationship *before* deleting
+  anything, so a bad import raises without wiping existing data.
+- `update_entity` now raises if the id doesn't exist (was previously a
+  silent no-op affecting 0 rows); `create_relationship` now checks both
+  endpoints exist before insert, with a clean message instead of a raw
+  `sqlite3.IntegrityError` leaking from the FK constraint.
+
+New `tests/test_db_validation.py` (20 tests) covers every rejection path
+plus the "doesn't wipe existing data on a bad import" and "bulk import
+stays lenient about deprecated fields" behaviors. Manually verified the
+full chain end-to-end: a JSON backup with an invalid entity type surfaces
+as "Validation error: Unknown entity type: ..." in the Backup & Restore
+screen, not a raw traceback. 113/113 tests passing.
+
 ### Phase 10 — Session Workflow
 
 Goal: build the next user-facing workflow on top of the stable core.

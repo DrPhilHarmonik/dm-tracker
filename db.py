@@ -4,7 +4,14 @@ import os
 from pathlib import Path
 from datetime import datetime
 
+import models
+import sheet as sheet_mod
+import effects as effects_mod
+import combat as combat_mod
+
 DEFAULT_DB_PATH = Path.home() / ".config" / "dm" / "campaign.db"
+
+SPECIAL_FIELD_KEYS = {"sheet", "active_effects", "combat"}
 
 
 def db_path() -> Path:
@@ -60,9 +67,90 @@ def now():
     return datetime.now().isoformat(timespec="seconds")
 
 
+# --- Validation ---
+#
+# This module is the single chokepoint every write path goes through --
+# live UI/wizard mutations, CLI backup/restore, and vault import all end up
+# calling create_entity/update_entity/create_relationship/replace_all.
+# Enforcing invariants here protects all of them at once, rather than
+# duplicating checks at each call site.
+
+def validate_entity_type(type_: str):
+    if type_ not in models.ENTITY_TYPES:
+        raise ValueError(f"Unknown entity type: {type_!r}")
+
+
+def validate_relationship_type(rel_type: str):
+    if rel_type not in models.RELATIONSHIP_TYPES:
+        raise ValueError(f"Unknown relationship type: {rel_type!r}")
+
+
+def validate_name(name) -> str:
+    if not isinstance(name, str) or not name.strip():
+        raise ValueError("name must be a non-empty string")
+    return name.strip()
+
+
+def normalize_special_fields(fields: dict) -> dict:
+    """Type-check and normalize the sheet/active_effects/combat sub-shapes
+    that ride alongside an entity's flat schema fields. Used by every write
+    path, including bulk import, so malformed nested data can never reach
+    the database -- sheet.normalize_sheet() etc. are deliberately lenient
+    about missing keys, so this stays backward-compatible with older data."""
+    fields = dict(fields)
+    if "sheet" in fields:
+        if not isinstance(fields["sheet"], dict):
+            raise ValueError("fields['sheet'] must be an object")
+        fields["sheet"] = sheet_mod.normalize_sheet(fields["sheet"])
+    if "active_effects" in fields:
+        if not isinstance(fields["active_effects"], list):
+            raise ValueError("fields['active_effects'] must be a list")
+        fields["active_effects"] = effects_mod.normalize_effects(fields["active_effects"])
+    if "combat" in fields:
+        if not isinstance(fields["combat"], dict):
+            raise ValueError("fields['combat'] must be an object")
+        fields["combat"] = combat_mod.normalize_combat(fields["combat"])
+    return fields
+
+
+def validate_fields(type_: str, fields: dict) -> dict:
+    """Strict validation for live create/update: rejects unknown flat field
+    keys and out-of-range select/number values for the given entity type,
+    then normalizes the sheet/active_effects/combat sub-shapes. Bulk import
+    (replace_all) intentionally skips the strict flat-field checks and only
+    normalizes the sub-shapes, so restoring an older backup whose schema has
+    since changed doesn't fail on fields that were valid when it was taken."""
+    if not isinstance(fields, dict):
+        raise ValueError("fields must be an object")
+
+    schema = models.ENTITY_SCHEMAS.get(type_, [])
+    schema_keys = {key for key, *_ in schema}
+    for key in fields:
+        if key in SPECIAL_FIELD_KEYS:
+            continue
+        if key not in schema_keys:
+            raise ValueError(f"Unknown field {key!r} for entity type {type_!r}")
+
+    for key, label, ftype, choices in schema:
+        if key not in fields:
+            continue
+        value = fields[key]
+        if value in ("", None):
+            continue
+        if ftype == "select" and choices and value not in choices:
+            raise ValueError(f"Invalid value {value!r} for field {label!r}: must be one of {choices}")
+        if ftype == "number" and not str(value).strip().lstrip("-").isdigit():
+            raise ValueError(f"Invalid value {value!r} for field {label!r}: must be a number")
+
+    return normalize_special_fields(fields)
+
+
 # --- Entity CRUD ---
 
 def create_entity(type_: str, name: str, fields: dict, notes: str = "") -> int:
+    validate_entity_type(type_)
+    name = validate_name(name)
+    fields = validate_fields(type_, fields)
     ts = now()
     with get_conn() as conn:
         cur = conn.execute(
@@ -73,6 +161,11 @@ def create_entity(type_: str, name: str, fields: dict, notes: str = "") -> int:
 
 
 def update_entity(id_: int, name: str, fields: dict, notes: str):
+    existing = get_entity(id_)
+    if existing is None:
+        raise ValueError(f"No entity with id {id_}")
+    name = validate_name(name)
+    fields = validate_fields(existing["type"], fields)
     with get_conn() as conn:
         conn.execute(
             "UPDATE entities SET name=?, fields=?, notes=?, updated_at=? WHERE id=?",
@@ -131,6 +224,11 @@ def _row(row) -> dict | None:
 # --- Relationship CRUD ---
 
 def create_relationship(from_id: int, to_id: int, rel_type: str, notes: str = "") -> int:
+    validate_relationship_type(rel_type)
+    if get_entity(from_id) is None:
+        raise ValueError(f"No entity with id {from_id}")
+    if get_entity(to_id) is None:
+        raise ValueError(f"No entity with id {to_id}")
     with get_conn() as conn:
         cur = conn.execute(
             "INSERT INTO relationships (from_id, to_id, rel_type, notes, created_at) VALUES (?,?,?,?,?)",
@@ -169,6 +267,15 @@ def list_relationships() -> list[dict]:
 
 
 def replace_all(entities: list[dict], relationships: list[dict]):
+    # Validate everything before touching the database, so a bad import
+    # raises without wiping existing data.
+    normalized_entities = []
+    for entity in entities:
+        validate_entity_type(entity["type"])
+        normalized_entities.append({**entity, "fields": normalize_special_fields(entity["fields"])})
+    for relationship in relationships:
+        validate_relationship_type(relationship["rel_type"])
+
     with get_conn() as conn:
         conn.execute("DELETE FROM relationships")
         conn.execute("DELETE FROM entities")
@@ -187,7 +294,7 @@ def replace_all(entities: list[dict], relationships: list[dict]):
                     entity["created_at"],
                     entity["updated_at"],
                 )
-                for entity in entities
+                for entity in normalized_entities
             ],
         )
         conn.executemany(
