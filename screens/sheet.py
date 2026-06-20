@@ -1,0 +1,316 @@
+from textual.app import ComposeResult
+from textual.binding import Binding
+from textual.widgets import Header, Footer, Label, Button, DataTable, Input, Select, TextArea, Static, ListView, ListItem, TabbedContent, TabPane, Switch
+from textual.screen import Screen, ModalScreen
+from textual.containers import Container, Horizontal, ScrollableContainer
+from textual import on
+from rich.text import Text
+from pathlib import Path
+
+import db
+import export as exp
+import sheet as shm
+import dice
+import combat as cbt
+import effects as fx
+import classes
+from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
+
+from screens.common import DismissableScreen, PALETTE
+
+SKILL_LEVEL_OPTIONS = [("None", "none"), ("Proficient", "proficient"), ("Expertise", "expertise")]
+
+
+class CharacterSheetScreen(Screen):
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("ctrl+s", "save", "Save"),
+    ]
+
+    def __init__(self, entity_id: int):
+        super().__init__()
+        self.entity_id = entity_id
+        entity = db.get_entity(entity_id)
+        self.entity_type = entity["type"]
+        self.sheet = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        self.pending_attacks: list[dict] = list(self.sheet["attacks"])
+        self.pending_specials: list[dict] = list(self.sheet["special_abilities"])
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with TabbedContent(id="sheet-tabs"):
+            with TabPane("Abilities", id="tab-abilities"):
+                yield ScrollableContainer(Container(id="abilities-fields"), id="abilities-scroll")
+            with TabPane("Combat", id="tab-combat"):
+                yield ScrollableContainer(Container(id="combat-fields"), id="combat-scroll")
+            with TabPane("Skills & Saves", id="tab-skills"):
+                yield ScrollableContainer(Container(id="skills-fields"), id="skills-scroll")
+            with TabPane("Attacks & Traits", id="tab-attacks"):
+                yield ScrollableContainer(Container(id="attacks-fields"), id="attacks-scroll")
+        yield Container(
+            Button("Recalculate", id="btn-recalc", variant="primary"),
+            Button("Save (Ctrl+S)", id="btn-save", variant="success"),
+            Button("Cancel", id="btn-cancel", variant="default"),
+            id="sheet-actions",
+        )
+        yield Footer()
+
+    async def on_mount(self):
+        entity = db.get_entity(self.entity_id)
+        self.title = f"{entity['name']} - Character Sheet"
+        await self._build_abilities_tab()
+        await self._build_combat_tab()
+        await self._build_skills_tab()
+        await self._build_attacks_tab()
+        self._refresh_computed_displays()
+
+    # -- tab builders --------------------------------------------------
+
+    async def _build_abilities_tab(self):
+        container = self.query_one("#abilities-fields")
+        rows = [
+            Horizontal(
+                Label(shm.ABILITY_LABELS[a], classes="ability-label"),
+                Input(value=str(self.sheet["abilities"][a]), id=f"sheet-ability-{a}", classes="ability-input"),
+                Static("+0", id=f"sheet-mod-{a}", classes="ability-mod"),
+                classes="ability-row",
+            )
+            for a in shm.ABILITIES
+        ]
+        await container.mount(*rows)
+
+    async def _build_combat_tab(self):
+        container = self.query_one("#combat-fields")
+        widgets = [
+            Label("Armor Class"), Input(value=str(self.sheet["ac"]), id="sheet-ac"),
+            Label("HP Max"), Input(value=str(self.sheet["hp_max"]), id="sheet-hp-max"),
+            Label("HP Current"), Input(value=str(self.sheet["hp_current"]), id="sheet-hp-current"),
+            Label("HP Temp"), Input(value=str(self.sheet["hp_temp"]), id="sheet-hp-temp"),
+            Label("Hit Dice"), Input(value=self.sheet["hit_dice"], placeholder="e.g. 5d8+10", id="sheet-hit-dice"),
+            Label("Speed (ft.)"), Input(value=str(self.sheet["speed"]), id="sheet-speed"),
+        ]
+        if self.entity_type == "enemy":
+            widgets += [
+                Label("Challenge Rating"), Input(value=self.sheet["cr"], placeholder="e.g. 1/2", id="sheet-cr"),
+                Label("Creature Type"), Input(value=self.sheet["creature_type"], placeholder="e.g. Humanoid", id="sheet-creature-type"),
+            ]
+        else:
+            widgets += [Label("Level"), Input(value=str(self.sheet["level"]), id="sheet-level")]
+        widgets += [
+            Label("Senses"), Input(value=self.sheet["senses"], placeholder="e.g. darkvision 60 ft.", id="sheet-senses"),
+            Label("Languages"), Input(value=self.sheet["languages"], placeholder="e.g. Common, Elvish", id="sheet-languages"),
+            Label("Proficiency Bonus (computed)"), Static("+2", id="sheet-prof-bonus"),
+        ]
+        await container.mount(*widgets)
+
+    async def _build_skills_tab(self):
+        container = self.query_one("#skills-fields")
+        save_rows = [
+            Horizontal(
+                Label(shm.ABILITY_LABELS[a], classes="save-label"),
+                Switch(value=a in self.sheet["saving_throw_proficiencies"], id=f"sheet-save-{a}"),
+                Static("+0", id=f"sheet-save-bonus-{a}", classes="save-bonus"),
+                classes="save-row",
+            )
+            for a in shm.ABILITIES
+        ]
+        skill_rows = [
+            Horizontal(
+                Label(f"{shm.SKILL_LABELS[s]} ({shm.SKILLS[s].upper()})", classes="skill-label"),
+                Select(SKILL_LEVEL_OPTIONS, value=self.sheet["skill_proficiencies"].get(s, "none"), id=f"sheet-skill-{s}", allow_blank=False),
+                Static("+0", id=f"sheet-skill-bonus-{s}", classes="skill-bonus"),
+                classes="skill-row",
+            )
+            for s in shm.SKILLS
+        ]
+        await container.mount(
+            Static("[bold]Saving Throws[/]"), *save_rows,
+            Static("[bold]Skills[/]"), *skill_rows,
+        )
+
+    async def _build_attacks_tab(self):
+        container = self.query_one("#attacks-fields")
+        await container.mount(
+            Static("[bold]Attacks[/]"),
+            Horizontal(
+                Input(placeholder="Name", id="attack-name"),
+                Input(placeholder="To-Hit Bonus", id="attack-bonus"),
+                Input(placeholder="Damage (e.g. 1d6+2)", id="attack-damage"),
+                Input(placeholder="Damage Type", id="attack-damage-type"),
+                id="attack-inputs",
+            ),
+            Horizontal(
+                Button("+ Add Attack", id="btn-add-attack"),
+                Button("Remove Selected", id="btn-remove-attack"),
+                id="attack-actions",
+            ),
+            ListView(id="list-attacks"),
+            Static("[bold]Resistances / Immunities / Vulnerabilities[/]"),
+            Input(value=self.sheet["resistances"], placeholder="Resistances", id="sheet-resistances"),
+            Input(value=self.sheet["immunities"], placeholder="Immunities", id="sheet-immunities"),
+            Input(value=self.sheet["vulnerabilities"], placeholder="Vulnerabilities", id="sheet-vulnerabilities"),
+            Static("[bold]Special Abilities[/]"),
+            Horizontal(
+                Input(placeholder="Name", id="special-name"),
+                Input(placeholder="Description", id="special-desc"),
+                id="special-inputs",
+            ),
+            Horizontal(
+                Button("+ Add Special Ability", id="btn-add-special"),
+                Button("Remove Selected", id="btn-remove-special"),
+                id="special-actions",
+            ),
+            ListView(id="list-specials"),
+        )
+        self._refresh_attacks_list()
+        self._refresh_specials_list()
+
+    # -- pending attack/special list management ------------------------
+
+    def _refresh_attacks_list(self):
+        lv = self.query_one("#list-attacks", ListView)
+        lv.clear()
+        for atk in self.pending_attacks:
+            bonus = shm.format_modifier(int(atk.get("bonus", 0) or 0))
+            text = f"{atk.get('name', '?')} {bonus} to hit, {atk.get('damage', '')} {atk.get('damage_type', '')}".rstrip()
+            lv.append(ListItem(Label(text)))
+
+    def _refresh_specials_list(self):
+        lv = self.query_one("#list-specials", ListView)
+        lv.clear()
+        for sa in self.pending_specials:
+            lv.append(ListItem(Label(f"{sa.get('name', '?')}: {sa.get('description', '')}")))
+
+    def _add_attack(self):
+        name = self.query_one("#attack-name", Input).value.strip()
+        if not name:
+            return
+        bonus_raw = self.query_one("#attack-bonus", Input).value.strip()
+        try:
+            bonus = int(bonus_raw) if bonus_raw else 0
+        except ValueError:
+            bonus = 0
+        damage = self.query_one("#attack-damage", Input).value.strip()
+        damage_type = self.query_one("#attack-damage-type", Input).value.strip()
+        self.pending_attacks.append({"name": name, "bonus": bonus, "damage": damage, "damage_type": damage_type})
+        for widget_id in ("#attack-name", "#attack-bonus", "#attack-damage", "#attack-damage-type"):
+            self.query_one(widget_id, Input).value = ""
+        self._refresh_attacks_list()
+
+    def _remove_attack(self):
+        lv = self.query_one("#list-attacks", ListView)
+        if lv.index is not None and lv.index < len(self.pending_attacks):
+            del self.pending_attacks[lv.index]
+            self._refresh_attacks_list()
+
+    def _add_special(self):
+        name = self.query_one("#special-name", Input).value.strip()
+        if not name:
+            return
+        desc = self.query_one("#special-desc", Input).value.strip()
+        self.pending_specials.append({"name": name, "description": desc})
+        self.query_one("#special-name", Input).value = ""
+        self.query_one("#special-desc", Input).value = ""
+        self._refresh_specials_list()
+
+    def _remove_special(self):
+        lv = self.query_one("#list-specials", ListView)
+        if lv.index is not None and lv.index < len(self.pending_specials):
+            del self.pending_specials[lv.index]
+            self._refresh_specials_list()
+
+    # -- collecting + computed display ----------------------------------
+
+    def _to_int(self, widget_id: str, default: int = 0) -> int:
+        raw = self.query_one(f"#{widget_id}", Input).value.strip()
+        try:
+            return int(raw) if raw else default
+        except ValueError:
+            return default
+
+    def _to_text(self, widget_id: str) -> str:
+        return self.query_one(f"#{widget_id}", Input).value.strip()
+
+    def _collect_sheet_from_widgets(self) -> dict:
+        abilities = {a: self._to_int(f"sheet-ability-{a}", 10) for a in shm.ABILITIES}
+        saving_throw_proficiencies = [a for a in shm.ABILITIES if self.query_one(f"#sheet-save-{a}", Switch).value]
+
+        skill_proficiencies = {}
+        for s in shm.SKILLS:
+            value = str(self.query_one(f"#sheet-skill-{s}", Select).value)
+            if value != "none":
+                skill_proficiencies[s] = value
+
+        sheet = {
+            "abilities": abilities,
+            "ac": self._to_int("sheet-ac", 10),
+            "hp_max": self._to_int("sheet-hp-max", 10),
+            "hp_current": self._to_int("sheet-hp-current", 10),
+            "hp_temp": self._to_int("sheet-hp-temp", 0),
+            "hit_dice": self._to_text("sheet-hit-dice"),
+            "speed": self._to_int("sheet-speed", 30),
+            "saving_throw_proficiencies": saving_throw_proficiencies,
+            "skill_proficiencies": skill_proficiencies,
+            "senses": self._to_text("sheet-senses"),
+            "languages": self._to_text("sheet-languages"),
+            "resistances": self._to_text("sheet-resistances"),
+            "immunities": self._to_text("sheet-immunities"),
+            "vulnerabilities": self._to_text("sheet-vulnerabilities"),
+            "attacks": list(self.pending_attacks),
+            "special_abilities": list(self.pending_specials),
+        }
+        if self.entity_type == "enemy":
+            sheet["cr"] = self._to_text("sheet-cr")
+            sheet["creature_type"] = self._to_text("sheet-creature-type")
+            sheet["level"] = self.sheet.get("level", 1)
+        else:
+            sheet["level"] = self._to_int("sheet-level", 1)
+            sheet["cr"] = self.sheet.get("cr", "0")
+            sheet["creature_type"] = self.sheet.get("creature_type", "")
+        return sheet
+
+    def _refresh_computed_displays(self):
+        sheet = self._collect_sheet_from_widgets()
+        pb = shm.proficiency_bonus(self.entity_type, sheet)
+
+        for a in shm.ABILITIES:
+            mod = shm.ability_modifier(sheet["abilities"][a])
+            self.query_one(f"#sheet-mod-{a}", Static).update(shm.format_modifier(mod))
+            self.query_one(f"#sheet-save-bonus-{a}", Static).update(
+                shm.format_modifier(shm.saving_throw_bonus(sheet, a, pb))
+            )
+        for s in shm.SKILLS:
+            self.query_one(f"#sheet-skill-bonus-{s}", Static).update(
+                shm.format_modifier(shm.skill_bonus(sheet, s, pb))
+            )
+        self.query_one("#sheet-prof-bonus", Static).update(shm.format_modifier(pb))
+        self.sheet = sheet
+
+    # -- actions ----------------------------------------------------------
+
+    def action_save(self):
+        sheet = self._collect_sheet_from_widgets()
+        entity = db.get_entity(self.entity_id)
+        fields = dict(entity["fields"])
+        fields["sheet"] = sheet
+        db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
+        self.dismiss(True)
+
+    def action_cancel(self):
+        self.dismiss(False)
+
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "btn-save":
+            self.action_save()
+        elif event.button.id == "btn-cancel":
+            self.action_cancel()
+        elif event.button.id == "btn-recalc":
+            self._refresh_computed_displays()
+        elif event.button.id == "btn-add-attack":
+            self._add_attack()
+        elif event.button.id == "btn-remove-attack":
+            self._remove_attack()
+        elif event.button.id == "btn-add-special":
+            self._add_special()
+        elif event.button.id == "btn-remove-special":
+            self._remove_special()

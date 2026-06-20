@@ -290,6 +290,14 @@ into screen-focused modules without changing behavior.
   behavioral cleanup until the moved code is stable.
 - Add focused tests around any helper extracted from screen code.
 
+**Status:** First mechanical split complete. `app.py` now only owns the app
+root and imports `Dashboard`; screen code lives under `screens/` by feature
+area (`dashboard`, `entities`, `sheet`, `roll`, `combat`, `effects`,
+`wizard`, `backup`, `modals`, `common`). The split intentionally preserved
+behavior and used local imports where needed to avoid screen-navigation import
+cycles. Existing regression tests and a headless Textual screen-mount smoke
+pass both succeed.
+
 ### Phase 8 — UI Interaction Tests
 
 Goal: cover the Textual behavior that pure unit tests cannot catch.
