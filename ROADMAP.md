@@ -401,10 +401,43 @@ screen, not a raw traceback. 113/113 tests passing.
 
 Goal: build the next user-facing workflow on top of the stable core.
 
-- Add a session prep/run view that gathers active quests, active encounters,
-  notable NPCs, recent notes, unresolved relationships, and quick roll/combat
-  actions.
-- Let session notes link to entities during play and optionally export as an
-  Obsidian-friendly session log.
-- Keep this workflow read-heavy at first; add mutation shortcuts only after
-  the information layout feels useful.
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Notable NPCs** = NPCs with a relationship (either direction) to an active
+  quest or active encounter. Not "most relationships overall," not
+  "recently edited" — tied to what's actually relevant tonight.
+- **Active encounters** = status `Planned` or `Active` (a DM prepping wants
+  to see what they're about to run, not just what's mid-fight).
+- **Session notes linking to entities** = reuse the Session entity's
+  existing `notes` field. DM types `[[Entity Name]]` by hand, same
+  convention already used by the vault export. No new schema, no new
+  note-taking mechanic.
+- **"Unresolved relationships"** — dropped. Nothing in the current data
+  model captures a resolved/unresolved state, and no concrete need has
+  shown up to justify inventing one.
+- **v1 scope** = a new read-only `SessionWorkflowScreen` (reachable from a
+  Session entity's detail view) that aggregates and displays the lists
+  below, with buttons that *navigate* into screens that already exist
+  (Detail / Character Sheet / Roll Dice / Combat Tracker). No new mutation
+  logic — marking a quest complete, etc. still happens on the entity's own
+  screen, not inline here.
+- **Gap-filled without a separate question**: a **Player Characters**
+  section listing all Adventurers with Roll/Sheet shortcuts. The roadmap's
+  "quick roll/combat actions" bullet implies PCs should be front and
+  center; the original bullet list never explicitly included them.
+
+**Sections in the new screen:**
+1. Player Characters (all adventurers) → Roll Dice / Character Sheet
+2. Active Quests (status=Active) → Detail
+3. Active Encounters (status=Planned/Active) → Combat Tracker
+4. Notable NPCs (related to #2/#3) → Detail
+5. Recent Notes (any entity, non-empty notes, sorted by updated_at) → Detail
+
+No new entity type, no new persisted fields, no new export logic in this
+pass — everything is computed from existing data on read. Obsidian export
+of the session log specifically was explicitly "optional" in the original
+wording and is deferred past v1.
+
+**Revised estimate:** 5 points (down from an initial 8 before scoping —
+dropping "unresolved relationships" and simplifying session notes to "just
+the existing notes field" removed the two most open-ended sub-features).
