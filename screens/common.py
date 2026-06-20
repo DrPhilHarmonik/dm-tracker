@@ -53,6 +53,13 @@ def schema_choices(entity_type: str, key: str) -> list[str]:
     return []
 
 
+def tint_border(widget, entity_type: str):
+    """Accent a container's border with its entity type's palette color, so
+    every screen reachable from a given entity carries the same visual
+    identity (e.g. all of an Enemy's screens show red, not just its name)."""
+    widget.styles.border = ("solid", PALETTE.get(entity_type, "#0f3460"))
+
+
 def format_io_error(ex: Exception) -> str:
     """Categorize export/import/backup failures into a clearer UI message.
 

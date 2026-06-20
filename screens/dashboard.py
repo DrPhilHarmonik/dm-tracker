@@ -63,13 +63,15 @@ class Dashboard(Screen):
         await cards.remove_children()
         new_cards = [
             Button(
-                f"[bold]{ENTITY_LABELS_PLURAL[type_]}[/bold]\n{counts.get(type_, 0)} entries",
+                f"[bold {PALETTE[type_]}]{ENTITY_LABELS_PLURAL[type_]}[/]\n{counts.get(type_, 0)} entries",
                 id=f"card-{type_}",
                 classes="card",
             )
             for type_ in ENTITY_TYPES
         ]
         await cards.mount(*new_cards)
+        for card in new_cards:
+            card.styles.border = ("solid", PALETTE[card.id[5:]])
 
     def on_button_pressed(self, event: Button.Pressed):
         btn_id = event.button.id

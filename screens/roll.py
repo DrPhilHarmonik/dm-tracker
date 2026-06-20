@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE
+from screens.common import DismissableScreen, PALETTE, tint_border
 
 class RollPickerScreen(DismissableScreen):
     BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
@@ -53,6 +53,8 @@ class RollPickerScreen(DismissableScreen):
 
     async def on_mount(self):
         self.title = f"{self.entity_name} - Roll Dice"
+        tint_border(self.query_one("#roll-tabs"), self.entity_type)
+        tint_border(self.query_one("#roll-output"), self.entity_type)
         await self._build_ability_tab()
         await self._build_skill_tab()
         await self._build_attack_tab()

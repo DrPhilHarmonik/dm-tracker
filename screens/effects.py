@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE
+from screens.common import DismissableScreen, PALETTE, tint_border
 
 class EffectsScreen(DismissableScreen):
     BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
@@ -25,6 +25,7 @@ class EffectsScreen(DismissableScreen):
         super().__init__()
         self.entity_id = entity_id
         entity = db.get_entity(entity_id)
+        self.entity_type = entity["type"]
         self.effects = fx.normalize_effects(entity["fields"].get("active_effects", []))
 
     def compose(self) -> ComposeResult:
@@ -55,6 +56,7 @@ class EffectsScreen(DismissableScreen):
     def on_mount(self):
         entity = db.get_entity(self.entity_id)
         self.title = f"{entity['name']} - Active Effects"
+        tint_border(self.query_one("#effects-scroll"), self.entity_type)
         self._refresh_list()
 
     def _refresh_list(self):

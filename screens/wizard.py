@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE, schema_choices
+from screens.common import DismissableScreen, PALETTE, schema_choices, tint_border
 from screens.sheet import SKILL_LEVEL_OPTIONS
 
 class WizardScreen(DismissableScreen):
@@ -79,6 +79,7 @@ class WizardScreen(DismissableScreen):
     async def on_mount(self):
         mode_label = "Quick" if self.mode == "quick" else "Advanced"
         self.title = f"Create {ENTITY_LABELS[self.entity_type]} ({mode_label} Wizard)"
+        tint_border(self.query_one("#wizard-scroll"), self.entity_type)
         await self._render_step()
 
     # -- navigation -------------------------------------------------------

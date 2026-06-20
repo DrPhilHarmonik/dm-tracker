@@ -92,7 +92,6 @@ Label {
 
 .card:hover {
     background: #0f3460;
-    border: solid #c792ea;
 }
 
 #actions {

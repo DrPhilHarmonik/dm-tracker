@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE
+from screens.common import DismissableScreen, PALETTE, tint_border
 
 class CombatTrackerScreen(DismissableScreen):
     BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
@@ -43,6 +43,8 @@ class CombatTrackerScreen(DismissableScreen):
     async def on_mount(self):
         entity = db.get_entity(self.entity_id)
         self.title = f"{entity['name']} - Combat Tracker"
+        tint_border(self.query_one("#combat-tabs"), "encounter")
+        tint_border(self.query_one("#combat-summary-scroll"), "encounter")
         await self._build_combatants_tab()
         await self._build_hp_conditions_tab()
         await self._build_turn_controls_tab()

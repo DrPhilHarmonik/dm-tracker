@@ -2,7 +2,35 @@ import json
 
 import yaml
 
-from screens.common import format_io_error
+from screens.common import format_io_error, tint_border, PALETTE
+from models import ENTITY_TYPES
+
+
+class _FakeStyles:
+    def __init__(self):
+        self.border = None
+
+
+class _FakeWidget:
+    def __init__(self):
+        self.styles = _FakeStyles()
+
+
+def test_tint_border_uses_the_entity_types_palette_color():
+    widget = _FakeWidget()
+    tint_border(widget, "enemy")
+    assert widget.styles.border == ("solid", PALETTE["enemy"])
+
+
+def test_tint_border_falls_back_for_unknown_type():
+    widget = _FakeWidget()
+    tint_border(widget, "not-a-real-type")
+    assert widget.styles.border == ("solid", "#0f3460")
+
+
+def test_palette_has_a_color_for_every_entity_type():
+    for entity_type in ENTITY_TYPES:
+        assert entity_type in PALETTE
 
 
 def test_json_decode_error_is_categorized_before_generic_value_error():

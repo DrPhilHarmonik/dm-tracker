@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE
+from screens.common import DismissableScreen, PALETTE, tint_border
 from screens.modals import ConfirmScreen
 from screens.sheet import CharacterSheetScreen
 from screens.roll import RollPickerScreen
@@ -58,6 +58,7 @@ class EntityListScreen(DismissableScreen):
         self.title = self.label_plural
         table = self.query_one(DataTable)
         table.add_columns("Name", *[label for _, label, _, _ in ENTITY_SCHEMAS.get(self.type_, [])][:3])
+        tint_border(table, self.type_)
         self._load()
 
     def _load(self, search: str = None):
@@ -292,6 +293,7 @@ class EntityDetailScreen(DismissableScreen):
         entity = db.get_entity(self.entity_id)
         if not entity:
             return
+        tint_border(self.query_one("#detail-scroll"), entity["type"])
         actions = self.query_one("#detail-actions")
         if entity["type"] in shm.SHEET_ENTITY_TYPES:
             await actions.mount(
@@ -447,6 +449,7 @@ class EntityFormScreen(Screen):
     def on_mount(self):
         label = ENTITY_LABELS[self.type_]
         self.title = f"{'Edit' if self.entity else 'New'} {label}"
+        tint_border(self.query_one("#form-scroll"), self.type_)
         container = self.query_one("#form-fields")
         existing = self.entity["fields"] if self.entity else {}
         existing_name = self.entity["name"] if self.entity else ""
@@ -584,6 +587,9 @@ class RelationshipFormScreen(Screen):
 
     def on_mount(self):
         self.title = "Add Relationship"
+        from_entity = db.get_entity(self.from_id)
+        if from_entity:
+            tint_border(self.query_one("#rel-scroll"), from_entity["type"])
         container = self.query_one("#rel-form")
         all_entities = db.list_entities()
         entity_options = [(f"{e['name']} ({ENTITY_LABELS[e['type']]})", str(e["id"])) for e in all_entities if e["id"] != self.from_id]

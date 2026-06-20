@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE
+from screens.common import DismissableScreen, PALETTE, tint_border
 
 SKILL_LEVEL_OPTIONS = [("None", "none"), ("Proficient", "proficient"), ("Expertise", "expertise")]
 
@@ -58,6 +58,7 @@ class CharacterSheetScreen(Screen):
     async def on_mount(self):
         entity = db.get_entity(self.entity_id)
         self.title = f"{entity['name']} - Character Sheet"
+        tint_border(self.query_one("#sheet-tabs"), self.entity_type)
         await self._build_abilities_tab()
         await self._build_combat_tab()
         await self._build_skills_tab()
