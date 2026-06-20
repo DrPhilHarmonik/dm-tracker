@@ -324,6 +324,31 @@ Goal: cover the Textual behavior that pure unit tests cannot catch.
   adventurer, assign sheet values, roll, apply an effect, add to combat, export
   a vault.
 
+**Status: Done.** Five new test files drive the real `DMApp` through a
+headless `Pilot` session (no `pytest-asyncio` dependency added — each test
+wraps an inner `async def scenario()` in a plain `asyncio.run()` call):
+
+- `test_ui_dismissal.py` — escaping Entity Detail refreshes the caller list,
+  escaping Combat Tracker/Effects refreshes the caller detail, and a direct
+  regression for the `Select.set_options()` selection-wiping bug (add two
+  conditions in a row to the same combatant and confirm both land).
+- `test_ui_wizard.py` — Escape mid-wizard creates nothing; "Make Hostile"
+  declined creates nothing; "Make Hostile" confirmed then cancelled out of
+  the wizard leaves no orphaned Enemy or relationship; wizard buttons appear
+  only for npc/adventurer/enemy (the Phase 8 prep work caught and fixed that
+  exact gap one conversation turn before writing this).
+- `test_ui_backup.py` — Export/Backup/Restore screens' status Statics
+  actually update on both success and categorized-failure paths, and the
+  vault-replace confirmation dialog blocks the import until confirmed.
+- `test_ui_e2e.py` — one continuous session: wizard-create an adventurer →
+  edit its character sheet → roll (confirms it reads the saved sheet) →
+  apply an effect → run a combat round (confirms HP/AC/effect carried
+  through) → export a vault (confirms the file reflects all of the above).
+
+93/93 tests passing; the UI suite adds roughly 24s to a previously
+sub-second run (10 pilot tests each booting a real Textual event loop) —
+acceptable for the regression coverage gained.
+
 ### Phase 9 — Data Integrity Layer
 
 Goal: prevent invalid campaign data from entering through UI, CLI, import, or
