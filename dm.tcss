@@ -45,7 +45,8 @@ Label {
 #hp-actions,
 #turn-advance-actions,
 #roll-ability-actions,
-#roll-attack-actions {
+#roll-attack-actions,
+#attack-roll-actions {
     height: auto;
     align: left middle;
 }
