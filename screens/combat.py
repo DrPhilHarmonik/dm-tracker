@@ -188,6 +188,9 @@ class CombatTrackerScreen(DismissableScreen):
         self.round_notices = notices
 
     def _refresh_summary(self):
+        # Re-running start_encounter() once already started would silently
+        # reset round/turn_index back to 1/0, discarding mid-fight progress.
+        self.query_one("#btn-start-encounter", Button).disabled = self.combat["started"]
         lines = [
             f"[bold]Round {self.combat['round']}[/]  -  {'Started' if self.combat['started'] else 'Not Started'}",
             "",

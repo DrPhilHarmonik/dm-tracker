@@ -177,7 +177,7 @@ class WizardScreen(DismissableScreen):
                 Label("Class"),
                 Select([(c, c) for c in classes.CLASSES], id="wiz-class", allow_blank=False, value=self.data["class_name"]),
                 Label("Level"),
-                Input(value=str(self.data["level"]), id="wiz-level"),
+                Input(value=str(self.data["level"]), id="wiz-level", classes="stat-input"),
             )
         else:
             await container.mount(
@@ -185,7 +185,7 @@ class WizardScreen(DismissableScreen):
                 Label("Creature Type"),
                 Input(value=self.data["creature_type"], placeholder="e.g. Humanoid", id="wiz-creature-type"),
                 Label("Challenge Rating"),
-                Input(value=self.data["cr"], placeholder="e.g. 1/2", id="wiz-cr"),
+                Input(value=self.data["cr"], placeholder="e.g. 1/2", id="wiz-cr", classes="stat-input"),
             )
 
     async def _build_step_abilities(self, container):

@@ -5,6 +5,17 @@ Adventurers and Enemies, a dice-rolling engine tied to those sheets, a
 round-based combat tracker, and timed stat-changing effects (potions, magic
 weapons, buffs/debuffs).
 
+## TUI Review Passes
+
+See `CLAUDE.md` for the full process (screenshot-based visual review, since
+the automated test suite drives screens programmatically and never actually
+renders them). First full pass done 2026-06-21: caught and fixed a critical
+bug (editing any entity's flat fields silently wiped its sheet/active
+effects/combat data), a mid-combat data-loss risk (Start Encounter resettable
+while already running), a flat/nested level-CR desync, an unstyled ListView,
+and oversized number inputs across three screens. Do another full pass after
+Phase 11 lands, and a targeted pass on any screen touched in between.
+
 ## Confirmed design decisions
 
 - **Ruleset:** D&D 5e (SRD) — six ability scores, proficiency bonus, skills,

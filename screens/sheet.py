@@ -83,20 +83,20 @@ class CharacterSheetScreen(Screen):
     async def _build_combat_tab(self):
         container = self.query_one("#combat-fields")
         widgets = [
-            Label("Armor Class"), Input(value=str(self.sheet["ac"]), id="sheet-ac"),
-            Label("HP Max"), Input(value=str(self.sheet["hp_max"]), id="sheet-hp-max"),
-            Label("HP Current"), Input(value=str(self.sheet["hp_current"]), id="sheet-hp-current"),
-            Label("HP Temp"), Input(value=str(self.sheet["hp_temp"]), id="sheet-hp-temp"),
+            Label("Armor Class"), Input(value=str(self.sheet["ac"]), id="sheet-ac", classes="stat-input"),
+            Label("HP Max"), Input(value=str(self.sheet["hp_max"]), id="sheet-hp-max", classes="stat-input"),
+            Label("HP Current"), Input(value=str(self.sheet["hp_current"]), id="sheet-hp-current", classes="stat-input"),
+            Label("HP Temp"), Input(value=str(self.sheet["hp_temp"]), id="sheet-hp-temp", classes="stat-input"),
             Label("Hit Dice"), Input(value=self.sheet["hit_dice"], placeholder="e.g. 5d8+10", id="sheet-hit-dice"),
-            Label("Speed (ft.)"), Input(value=str(self.sheet["speed"]), id="sheet-speed"),
+            Label("Speed (ft.)"), Input(value=str(self.sheet["speed"]), id="sheet-speed", classes="stat-input"),
         ]
         if self.entity_type == "enemy":
             widgets += [
-                Label("Challenge Rating"), Input(value=self.sheet["cr"], placeholder="e.g. 1/2", id="sheet-cr"),
+                Label("Challenge Rating"), Input(value=self.sheet["cr"], placeholder="e.g. 1/2", id="sheet-cr", classes="stat-input"),
                 Label("Creature Type"), Input(value=self.sheet["creature_type"], placeholder="e.g. Humanoid", id="sheet-creature-type"),
             ]
         else:
-            widgets += [Label("Level"), Input(value=str(self.sheet["level"]), id="sheet-level")]
+            widgets += [Label("Level"), Input(value=str(self.sheet["level"]), id="sheet-level", classes="stat-input")]
         widgets += [
             Label("Senses"), Input(value=self.sheet["senses"], placeholder="e.g. darkvision 60 ft.", id="sheet-senses"),
             Label("Languages"), Input(value=self.sheet["languages"], placeholder="e.g. Common, Elvish", id="sheet-languages"),
@@ -294,6 +294,13 @@ class CharacterSheetScreen(Screen):
         entity = db.get_entity(self.entity_id)
         fields = dict(entity["fields"])
         fields["sheet"] = sheet
+        # The sheet is the authoritative source for these -- keep the flat
+        # copies (used by list columns and the detail view) from drifting.
+        if self.entity_type == "enemy":
+            fields["cr"] = sheet["cr"]
+            fields["creature_type"] = sheet["creature_type"]
+        else:
+            fields["level"] = str(sheet["level"])
         db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
         self.dismiss(True)
 

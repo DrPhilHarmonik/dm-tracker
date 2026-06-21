@@ -228,6 +228,8 @@ DataTable {
 #delrel-container ListView {
     height: 1fr;
     margin: 1 0;
+    background: #1a1a2e;
+    border: solid #0f3460;
 }
 
 #delrel-actions Button {
@@ -402,6 +404,12 @@ ConfirmScreen {
 #combat-fields Static#sheet-prof-bonus {
     color: #c3e88d;
     text-style: bold;
+}
+
+#combat-fields Input.stat-input,
+#form-fields Input.stat-input,
+#wizard-step Input.stat-input {
+    width: 14;
 }
 
 #attack-inputs, #special-inputs {

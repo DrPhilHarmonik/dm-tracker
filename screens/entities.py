@@ -278,6 +278,23 @@ class EntityDetailScreen(DismissableScreen):
         super().__init__()
         self.entity_id = entity_id
 
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """Hide footer/keybinding hints for actions that don't apply to this
+        entity's type (e.g. "Make Hostile" on a Quest), so the footer only
+        ever shows hotkeys that will actually do something."""
+        entity = db.get_entity(self.entity_id)
+        if not entity:
+            return True
+        if action in ("open_sheet", "open_roll", "open_effects"):
+            return entity["type"] in shm.SHEET_ENTITY_TYPES
+        if action == "make_hostile":
+            return entity["type"] == "npc"
+        if action == "open_combat":
+            return entity["type"] == "encounter"
+        if action == "open_session_workflow":
+            return entity["type"] == "session"
+        return True
+
     def compose(self) -> ComposeResult:
         yield Header()
         yield ScrollableContainer(
@@ -479,7 +496,8 @@ class EntityFormScreen(Screen):
                 sel = Select(options, value=val or Select.NULL, id=f"field-{key}")
                 container.mount(sel)
             else:
-                container.mount(Input(value=str(val) if val else "", placeholder=field_label, id=f"field-{key}"))
+                classes = "stat-input" if ftype == "number" else None
+                container.mount(Input(value=str(val) if val else "", placeholder=field_label, id=f"field-{key}", classes=classes))
 
         container.mount(Label("Notes"))
         notes_val = self.entity.get("notes", "") if self.entity else ""
@@ -548,12 +566,29 @@ class EntityFormScreen(Screen):
         result = self._collect()
         if not result:
             return
-        name, fields, notes = result
+        name, collected_fields, notes = result
         if self.entity:
+            # Merge into the existing fields rather than replacing them
+            # wholesale -- this form only edits the flat schema fields, and
+            # a bare replace would silently wipe sheet/active_effects/combat
+            # data that lives alongside them.
+            fields = dict(self.entity["fields"])
+            fields.update(collected_fields)
+            if "sheet" in fields:
+                # Keep the sheet's own copies of these in sync with the flat
+                # fields just edited here, so the two never silently drift.
+                if self.type_ == "enemy":
+                    fields["sheet"]["cr"] = fields.get("cr", fields["sheet"].get("cr", "0"))
+                    fields["sheet"]["creature_type"] = fields.get("creature_type", fields["sheet"].get("creature_type", ""))
+                elif "level" in fields:
+                    try:
+                        fields["sheet"]["level"] = int(fields["level"] or 1)
+                    except ValueError:
+                        pass  # validate_fields() will raise its own clear error on save
             db.update_entity(self.entity["id"], name, fields, notes)
             entity_id = self.entity["id"]
         else:
-            entity_id = db.create_entity(self.type_, name, fields, notes)
+            entity_id = db.create_entity(self.type_, name, collected_fields, notes)
         for rel in self.pending_rels:
             db.create_relationship(entity_id, rel["to_id"], rel["rel_type"], rel["notes"])
         self.dismiss(True)
