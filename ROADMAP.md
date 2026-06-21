@@ -525,3 +525,66 @@ which is offset by summons needing its own entity-creation flow end to end.
 
 **Status:** Scoped, not started. Next up after Phase 10 (Session Workflow),
 unless reprioritized.
+
+### Phase 12 — Defined Races with Integrated Stat Bonuses
+
+Goal: let an Adventurer's race actually affect their numbers (ability
+scores, speed, senses, languages) instead of "race" being a flavor-only
+text field, the same way class/level already feeds AC/HP suggestions in the
+wizard.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Race list = core SRD races + subraces**, all SRD-legal (no PHB-only
+  content like Drow, consistent with the project's existing "D&D 5e (SRD)"
+  ruleset decision): Human, Elf (High Elf, Wood Elf), Dwarf (Hill Dwarf,
+  Mountain Dwarf), Halfling (Lightfoot, Stout), Gnome (Forest Gnome, Rock
+  Gnome), Half-Elf, Half-Orc, Dragonborn, Tiefling — 13 selectable
+  race/subrace entries.
+- **Bonuses bake into the Standard Array at creation time**, not a live
+  modifier. Matches how the wizard already turns class+level into a
+  suggested AC/HP; simplest mechanism that satisfies "stats are
+  integrated." Changing an existing character's race later is a manual
+  edit (same as today), not a re-derivable toggle — no live recompute
+  machinery added to `sheet.py` for this.
+- **A race definition carries:** ability score bonuses, speed (only a few
+  races deviate from 30 ft., e.g. Dwarf/Halfling/Gnome at 25 ft.), senses
+  (e.g. "Darkvision 60 ft."), and languages (e.g. "Common, Elvish"). These
+  bake into the sheet's existing `speed`/`senses`/`languages` fields the
+  same way ability bonuses bake into `abilities`, at creation time only.
+- **Non-numeric racial traits are out of scope.** Things like Dwarven
+  Toughness (+1 HP per level), Gnome Cunning (advantage on INT/WIS/CHA
+  saves vs. magic), or Stout Halfling's poison resistance don't fit the
+  ability/speed/senses/language model and won't be mechanically enforced —
+  at most a freeform note, consistent with how `special_abilities` already
+  works on the sheet.
+- **New Wizard step, adventurer-only.** Enemies use CR/creature type, not
+  race, and NPCs have no stat block to bake bonuses into — both keep their
+  current schema untouched. New step order: Basic Info → **Race** (select
+  from the list) → Class & Level → Standard Array (shown with the race
+  bonus already applied) → Review & Create.
+- **The flat `race` schema field stays freeform text, unchanged.** Picking
+  a race/subrace in the wizard writes its name into that same text field
+  (e.g. "Wood Elf") exactly as typing it manually would — no schema change,
+  no migration, no constraint added to already-existing characters or
+  hand-typed values. The new race list only exists to compute the bonus
+  applied during wizard creation.
+
+**Open question for build time:** Half-Elf is the one SRD race with a
+player-choice bonus ("+1 to two ability scores of your choice" on top of
++2 CHA) rather than a fixed spread. Worth a small "pick two abilities"
+sub-step in the wizard when Half-Elf is chosen, rather than guessing a
+default pair — needs a decision when this is actually built, not blocking
+the scope.
+
+**New module:** `races.py` (mirrors `classes.py`'s shape) holding the
+race/subrace list with each entry's ability bonuses, speed override,
+senses, and languages, plus a `apply_race_bonus(abilities, race_key)` -style
+helper the wizard calls when assembling the Standard Array step.
+
+**Estimate:** 5 points — one self-contained reference module plus one new
+wizard step; smaller than Phase 11 since it's a single feature rather than
+three, but the Half-Elf choice-bonus sub-step adds a bit of wizard-flow
+complexity beyond a flat lookup table.
+
+**Status:** Scoped, not started.
