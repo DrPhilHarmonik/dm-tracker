@@ -441,3 +441,76 @@ wording and is deferred past v1.
 **Revised estimate:** 5 points (down from an initial 8 before scoping —
 dropping "unresolved relationships" and simplifying session notes to "just
 the existing notes field" removed the two most open-ended sub-features).
+
+**Status: Done.** New top-level `session_workflow.py` module holds the pure
+aggregation logic (`player_characters()`, `active_quests()`,
+`active_encounters()`, `notable_npcs()`, `recent_notes()`) — no new schema,
+everything computed from existing entities/relationships on read, matching
+the v1 scope. A `SessionWorkflowScreen` (reachable from any Session's detail
+view via the "Session Workflow" button or `w` key) renders the five
+sections as separate DataTables: Player Characters (with explicit
+"Character Sheet" / "Roll Dice" buttons acting on the selected row, per the
+gap-filled PC section), Active Quests, Active Encounters, Notable NPCs, and
+Recent Notes — each row navigates straight into the matching existing
+screen (Sheet, Combat Tracker, or Detail) rather than introducing any new
+mutation UI. 129/129 tests passing.
+
+### Phase 11 — Spellcasting, Action Economy, and Summons
+
+Goal: extend the character sheet and combat tracker to cover three related
+gaps that show up once a party past level 1 actually plays a fight: nothing
+today tracks what a combatant can still do this turn, nothing tracks spell
+slots/spells, and nothing creates a temporary ally creature mid-combat.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Action economy is tied to specific abilities, not a generic checklist.**
+  Each entry in a sheet's `attacks` list (and the new `spells` list below)
+  gains an `action_cost` field: `action` / `bonus_action` / `reaction` /
+  `free`. The Combat Tracker tracks, per combatant per turn, which of
+  Action/Bonus Action/Reaction have been spent; using a tagged attack or
+  spell from the tracker auto-marks that slot used. Slots reset when that
+  combatant's turn starts (hooks into `combat.py`'s existing next-turn
+  logic).
+- **Spellcasting = slots + a spell list + cast roll**, mirroring how attacks
+  already work. Sheet gains: a `spellcasting_ability` (int/wis/cha, sets
+  save DC and spell attack bonus), `spell_slots` (current/max per level
+  1-9), and a `spells` list (name, level 0-9 [0 = cantrip, costs no slot],
+  `action_cost`, `save_or_attack`: save / attack / none, save ability if
+  applicable, freeform effect text — no built-in SRD spell database).
+  "Cast Spell" extends the existing Roll Picker / combat attack-roll flow:
+  shows save DC or rolls spell attack bonus the same way weapon attacks do
+  now, and decrements the matching slot (cantrips never touch slots).
+- **Summons are real, persisted entities, not combat-only stubs.** A summon
+  creates an actual `adventurer`/`enemy` entity with its own full sheet
+  (reusing the existing Quick Wizard flow, the same pattern "Make Hostile"
+  already established), linked back to the summoner via a new relationship
+  type `summoned by`. From there it's one click to add to the current
+  encounter via the Combat Tracker's existing "Add Combatant" picker — no
+  new combat-add mechanism needed. Removing a summon when it ends is just
+  deleting the entity, same as any other.
+- **No new "side" / ally-vs-enemy concept.** The combat tracker doesn't
+  track allegiance today (DM tracks that mentally, same as which enemies are
+  already hostile); summons don't change that. Not in scope for this phase.
+
+**Open questions for when we build this:**
+
+- Exact `CharacterSheetScreen` layout for the new Spells tab (likely a
+  fifth tab alongside Abilities/Combat/Skills & Saves/Attacks & Traits,
+  following the same add/remove-via-ListView pattern as Attacks).
+  whether the cast-roll UI lives in the existing Roll Picker's Attacks tab
+  (extended to cover spells too) or a new dedicated tab.
+- Whether "Make Hostile"'s wizard-prefill code can be generalized into a
+  shared "spawn linked entity" helper that both it and Summon call, or
+  whether summons need enough of their own prefill logic (CR/level
+  suggestions from the summoning spell, e.g. "Conjure Animals" tier) to stay
+  separate.
+
+**Estimate:** 8 points — three sub-features, each touching the sheet schema,
+`sheet.py`'s derived-stat math, at least one screen's UI, and tests; action
+economy and spellcasting are tightly coupled (both ride on `action_cost`)
+so they're cheaper together than the points would suggest in isolation,
+which is offset by summons needing its own entity-creation flow end to end.
+
+**Status:** Scoped, not started. Next up after Phase 10 (Session Workflow),
+unless reprioritized.

@@ -271,6 +271,7 @@ class EntityDetailScreen(DismissableScreen):
         Binding("h", "make_hostile", "Make Hostile"),
         Binding("o", "open_combat", "Combat Tracker"),
         Binding("f", "open_effects", "Effects"),
+        Binding("w", "open_session_workflow", "Session Workflow"),
     ]
 
     def __init__(self, entity_id: int):
@@ -308,6 +309,8 @@ class EntityDetailScreen(DismissableScreen):
             await actions.mount(Button("Make Hostile", id="btn-hostile", variant="error"))
         if entity["type"] == "encounter":
             await actions.mount(Button("Combat Tracker", id="btn-combat", variant="warning"))
+        if entity["type"] == "session":
+            await actions.mount(Button("Session Workflow", id="btn-session-workflow", variant="warning"))
 
     def _render_detail(self):
         entity = db.get_entity(self.entity_id)
@@ -367,6 +370,8 @@ class EntityDetailScreen(DismissableScreen):
             self.action_open_combat()
         elif event.button.id == "btn-effects":
             self.action_open_effects()
+        elif event.button.id == "btn-session-workflow":
+            self.action_open_session_workflow()
 
     def action_edit(self):
         entity = db.get_entity(self.entity_id)
@@ -420,6 +425,12 @@ class EntityDetailScreen(DismissableScreen):
         entity = db.get_entity(self.entity_id)
         if entity and entity["type"] in shm.SHEET_ENTITY_TYPES:
             self.app.push_screen(EffectsScreen(self.entity_id), callback=lambda _: self._render_detail())
+
+    def action_open_session_workflow(self):
+        entity = db.get_entity(self.entity_id)
+        if entity and entity["type"] == "session":
+            from screens.session_workflow import SessionWorkflowScreen
+            self.app.push_screen(SessionWorkflowScreen(self.entity_id), callback=lambda _: self._render_detail())
 
 
 class EntityFormScreen(Screen):

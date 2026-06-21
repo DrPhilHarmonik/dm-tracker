@@ -589,6 +589,33 @@ ConfirmScreen {
     border: solid #0f3460;
 }
 
+/* ---- Session Workflow ---- */
+#session-workflow-scroll {
+    height: 1fr;
+    padding: 1 2;
+}
+
+.workflow-heading {
+    text-style: bold;
+    color: #b2ccd6;
+    margin-top: 1;
+}
+
+#session-workflow-scroll DataTable {
+    height: 6;
+    margin-bottom: 1;
+}
+
+#wf-pc-actions {
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#wf-pc-actions Button {
+    min-width: 20;
+}
+
 /* ---- Creation Wizard ---- */
 #wizard-scroll {
     height: 1fr;
