@@ -382,6 +382,12 @@ ConfirmScreen {
     text-style: bold;
 }
 
+.race-bonus-badge {
+    width: 10;
+    color: #c3e88d;
+    text-style: bold;
+}
+
 .save-label, .skill-label {
     width: 24;
 }

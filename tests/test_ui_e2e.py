@@ -30,6 +30,8 @@ def test_full_happy_path_session(monkeypatch, tmp_path):
             wiz.query_one("#wiz-alignment").value = "Chaotic Good"
             await wiz._go_next()
             await pilot.pause()
+            await wiz._go_next()  # accept the default race (Human)
+            await pilot.pause()
             wiz.query_one("#wiz-level").value = "5"
             await wiz._go_next()
             await pilot.pause()

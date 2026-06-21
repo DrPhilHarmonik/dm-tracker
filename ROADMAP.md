@@ -587,4 +587,23 @@ wizard step; smaller than Phase 11 since it's a single feature rather than
 three, but the Half-Elf choice-bonus sub-step adds a bit of wizard-flow
 complexity beyond a flat lookup table.
 
-**Status:** Scoped, not started.
+**Status: Done.** New `races.py` module (13 SRD-legal race/subrace entries,
+mirroring `classes.py`'s shape) plus `apply_bonuses()`/`ability_bonus_total()`
+helpers. Wizard gained a new "Race" step (adventurer-only, between Basic
+Info and Class & Level) with a live-updating ability-bonus summary; picking
+Half-Elf reveals a "choose 2 abilities for +1 each" sub-step, validated to
+reject picking the same ability twice. The raw Standard Array assignment in
+`self.data["abilities"]` is never mutated -- bonuses are only ever applied
+to a derived copy (`_effective_abilities()`) used for the Review step's
+AC/HP suggestions and the final sheet, so navigating Back to re-edit ability
+scores still validates against the unmodified Standard Array. Speed,
+senses, and languages bake in from the chosen race the same way. 144/144
+tests passing.
+
+Found and fixed one real bug while building this: the new race Select fires
+a `Changed` event on its own initial mount (no-value -> default value), and
+the handler was re-entrantly re-rendering the step while the original mount
+was still in progress, intermittently corrupting a later step's `Select`
+widget (~40% of e2e test runs failed before the fix). Fixed by only
+re-rendering when the new value actually differs from the value the step
+was built with.

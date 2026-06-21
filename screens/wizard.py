@@ -14,6 +14,7 @@ import dice
 import combat as cbt
 import effects as fx
 import classes
+import races
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
 from screens.common import DismissableScreen, PALETTE, schema_choices, tint_border
@@ -43,7 +44,7 @@ class WizardScreen(DismissableScreen):
         self.mode = mode
         self.link_to_npc_id = link_to_npc_id
         self.data = {
-            "name": "", "race": "", "alignment": "", "role": "", "status": "", "location": "",
+            "name": "", "race": "", "race_bonus_choices": [], "alignment": "", "role": "", "status": "", "location": "",
             "class_name": classes.CLASSES[0], "level": 1, "cr": "0", "creature_type": "",
             "abilities": dict(zip(shm.ABILITIES, shm.STANDARD_ARRAY)),
             "saving_throw_proficiencies": [],
@@ -59,11 +60,15 @@ class WizardScreen(DismissableScreen):
         self.pending_specials: list[dict] = list(self.data["special_abilities"])
         self.steps = self._build_steps()
         self.step_index = 0
+        self._race_step_built_for = None
 
     def _build_steps(self) -> list[str]:
         if self.entity_type == "npc":
             return ["basic_npc", "review"]
-        steps = ["basic", "class_or_cr", "abilities"]
+        steps = ["basic"]
+        if self.entity_type == "adventurer":
+            steps.append("race")
+        steps += ["class_or_cr", "abilities"]
         if self.mode == "advanced":
             steps += ["skills_saves", "attacks_traits"]
         steps.append("review")
@@ -160,8 +165,6 @@ class WizardScreen(DismissableScreen):
             Static("[bold]Basic Info[/]"),
             Label("Name"), Input(value=self.data["name"], id="wiz-name"),
         ]
-        if self.entity_type == "adventurer":
-            widgets += [Label("Race"), Input(value=self.data["race"], id="wiz-race")]
         alignment_choices = schema_choices(self.entity_type, "alignment")
         widgets += [
             Label("Alignment"),
@@ -169,6 +172,52 @@ class WizardScreen(DismissableScreen):
                    value=self.data["alignment"] or Select.NULL, allow_blank=True, prompt="Select alignment..."),
         ]
         await container.mount(*widgets)
+
+    async def _build_step_race(self, container):
+        current_race = self.data["race"] if self.data["race"] in races.RACES else races.RACE_NAMES[0]
+        self._race_step_built_for = current_race
+        race_data = races.RACES[current_race]
+        widgets = [
+            Static("[bold]Race[/]"),
+            Label("Race"),
+            Select([(name, name) for name in races.RACE_NAMES], id="wiz-race-select",
+                   allow_blank=False, value=current_race),
+        ]
+        choice_bonus = race_data.get("choice_bonus", 0)
+        if choice_bonus:
+            ability_options = [(shm.ABILITY_LABELS[a], a) for a in shm.ABILITIES]
+            choices = self.data["race_bonus_choices"]
+            widgets += [
+                Static(f"[dim]Choose {choice_bonus} different abilities to each get +1[/]"),
+                Label("Bonus Ability 1"),
+                Select(ability_options, id="wiz-race-choice-0", allow_blank=False,
+                       value=choices[0] if len(choices) > 0 else "dex"),
+                Label("Bonus Ability 2"),
+                Select(ability_options, id="wiz-race-choice-1", allow_blank=False,
+                       value=choices[1] if len(choices) > 1 else "wis"),
+            ]
+        bonus_parts = [f"{a.upper()} +{b}" for a, b in race_data["ability_bonuses"].items()]
+        if choice_bonus:
+            bonus_parts.append(f"+1 to {choice_bonus} chosen abilities")
+        summary = f"Speed {race_data['speed']} ft.   Bonuses: {', '.join(bonus_parts)}"
+        if race_data["senses"]:
+            summary += f"   {race_data['senses']}"
+        widgets.append(Static(f"[dim]{summary}[/]"))
+        await container.mount(*widgets)
+
+    @on(Select.Changed, "#wiz-race-select")
+    async def _on_wiz_race_changed(self, event: Select.Changed):
+        if self.steps[self.step_index] != "race":
+            return
+        new_race = str(event.value)
+        # Select fires Changed on its own initial mount (no-value -> default
+        # value); only re-render for an actual user-driven change, or this
+        # re-enters _render_step() while the original mount is still in
+        # progress and corrupts later widgets.
+        if new_race == self._race_step_built_for:
+            return
+        self.data["race"] = new_race
+        await self._render_step()
 
     async def _build_step_class_or_cr(self, container):
         if self.entity_type == "adventurer":
@@ -191,9 +240,11 @@ class WizardScreen(DismissableScreen):
     async def _build_step_abilities(self, container):
         rows = []
         for a in shm.ABILITIES:
+            bonus = races.ability_bonus_total(self.data["race"], a, self.data["race_bonus_choices"]) if self.entity_type == "adventurer" else 0
             rows.append(Horizontal(
                 Label(shm.ABILITY_LABELS[a], classes="ability-label"),
                 Input(value=str(self.data["abilities"][a]), id=f"wiz-ability-{a}", classes="ability-input"),
+                Static(f"+{bonus} race" if bonus else "", classes="race-bonus-badge"),
                 classes="ability-row",
             ))
         await container.mount(
@@ -277,7 +328,7 @@ class WizardScreen(DismissableScreen):
             return
 
         self._apply_class_defaults()
-        abilities = self.data["abilities"]
+        abilities = self._effective_abilities()
         con_mod = shm.ability_modifier(abilities["con"])
         dex_mod = shm.ability_modifier(abilities["dex"])
         suggested_ac = shm.suggested_ac(dex_mod)
@@ -293,7 +344,7 @@ class WizardScreen(DismissableScreen):
         ]
         lines.append("  " + "  ".join(ability_parts))
         if self.entity_type == "adventurer":
-            lines.append(f"  Class: {self.data['class_name']}   Level: {self.data['level']}")
+            lines.append(f"  Race: {self.data['race']}   Class: {self.data['class_name']}   Level: {self.data['level']}")
         else:
             lines.append(f"  CR: {self.data['cr']}   Creature Type: {self.data['creature_type']}")
         if self.data["saving_throw_proficiencies"]:
@@ -329,12 +380,24 @@ class WizardScreen(DismissableScreen):
 
     def _collect_step_basic(self):
         self.data["name"] = self.query_one("#wiz-name", Input).value.strip()
-        if self.entity_type == "adventurer":
-            self.data["race"] = self.query_one("#wiz-race", Input).value.strip()
         align = self.query_one("#wiz-alignment", Select).value
         self.data["alignment"] = "" if align is Select.NULL else str(align)
         if not self.data["name"]:
             return "Name is required."
+        return None
+
+    def _collect_step_race(self):
+        selected = str(self.query_one("#wiz-race-select", Select).value)
+        self.data["race"] = selected
+        choice_bonus = races.RACES.get(selected, {}).get("choice_bonus", 0)
+        if choice_bonus:
+            choice_0 = str(self.query_one("#wiz-race-choice-0", Select).value)
+            choice_1 = str(self.query_one("#wiz-race-choice-1", Select).value)
+            if choice_0 == choice_1:
+                return "Choose two different abilities for the racial bonus."
+            self.data["race_bonus_choices"] = [choice_0, choice_1]
+        else:
+            self.data["race_bonus_choices"] = []
         return None
 
     def _collect_step_class_or_cr(self):
@@ -398,6 +461,15 @@ class WizardScreen(DismissableScreen):
         mode, where the skills_saves step never runs to confirm them."""
         if self.entity_type == "adventurer" and not self.data["saving_throw_proficiencies"]:
             self.data["saving_throw_proficiencies"] = list(classes.CLASS_SAVING_THROWS.get(self.data["class_name"], []))
+
+    def _effective_abilities(self) -> dict:
+        """The raw Standard Array assignment stays untouched in self.data so
+        going Back to the Abilities step and forward again still validates;
+        the race bonus is only ever applied to a derived copy, computed
+        on demand here."""
+        if self.entity_type == "adventurer" and self.data["race"] in races.RACES:
+            return races.apply_bonuses(self.data["abilities"], self.data["race"], self.data["race_bonus_choices"])
+        return dict(self.data["abilities"])
 
     def _reset_ability_inputs_to_standard_array(self):
         for a, score in zip(shm.ABILITIES, shm.STANDARD_ARRAY):
@@ -475,7 +547,7 @@ class WizardScreen(DismissableScreen):
             return
 
         sheet_data = shm.default_sheet()
-        sheet_data["abilities"] = dict(self.data["abilities"])
+        sheet_data["abilities"] = self._effective_abilities()
         sheet_data["ac"] = self.data["ac"]
         sheet_data["hp_max"] = self.data["hp_max"]
         sheet_data["hp_current"] = self.data["hp_max"]
@@ -489,6 +561,11 @@ class WizardScreen(DismissableScreen):
 
         if self.entity_type == "adventurer":
             sheet_data["level"] = self.data["level"]
+            race_data = races.RACES.get(self.data["race"])
+            if race_data:
+                sheet_data["speed"] = race_data["speed"]
+                sheet_data["senses"] = race_data["senses"]
+                sheet_data["languages"] = race_data["languages"]
             flat_fields = {
                 "race": self.data["race"],
                 "class_name": self.data["class_name"],
