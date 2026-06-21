@@ -17,7 +17,7 @@ import classes
 import races
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE, schema_choices, tint_border
+from screens.common import DismissableScreen, PALETTE, entity_ref_options, schema_choices, tint_border
 from screens.sheet import SKILL_LEVEL_OPTIONS
 
 # The only entity types the wizard knows how to build: a stat-block-guided
@@ -157,7 +157,9 @@ class WizardScreen(DismissableScreen):
             Label("Status"),
             Select([(s, s) for s in status_choices], id="wiz-status",
                     value=self.data["status"] or Select.NULL, allow_blank=True, prompt="Select status..."),
-            Label("Current Location"), Input(value=self.data["location"], id="wiz-location"),
+            Label("Current Location"),
+            Select(entity_ref_options("location", self.data["location"]), id="wiz-location",
+                   value=self.data["location"] or Select.NULL, allow_blank=True, prompt="Select location..."),
         )
 
     async def _build_step_basic(self, container):
@@ -373,7 +375,8 @@ class WizardScreen(DismissableScreen):
         self.data["alignment"] = "" if align is Select.NULL else str(align)
         status = self.query_one("#wiz-status", Select).value
         self.data["status"] = "" if status is Select.NULL else str(status)
-        self.data["location"] = self.query_one("#wiz-location", Input).value.strip()
+        location = self.query_one("#wiz-location", Select).value
+        self.data["location"] = "" if location is Select.NULL else str(location)
         if not self.data["name"]:
             return "Name is required."
         return None

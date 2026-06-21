@@ -53,6 +53,20 @@ def schema_choices(entity_type: str, key: str) -> list[str]:
     return []
 
 
+def entity_ref_options(referenced_type: str, current_value: str = "") -> list[tuple[str, str]]:
+    """Select options for an 'entity_ref' field: every entity of the
+    referenced type, by name. If the field's current value doesn't match
+    any of them (stale text from before this field was a picker, or the
+    referenced entity was since renamed/deleted), it's kept as its own
+    option rather than silently dropped, so opening the form never loses
+    data the DM hasn't actually touched."""
+    options = [(e["name"], e["name"]) for e in db.list_entities(referenced_type)]
+    names = {name for _, name in options}
+    if current_value and current_value not in names:
+        options.append((f"{current_value} (not found)", current_value))
+    return options
+
+
 def tint_border(widget, entity_type: str):
     """Accent a container's border with its entity type's palette color, so
     every screen reachable from a given entity carries the same visual

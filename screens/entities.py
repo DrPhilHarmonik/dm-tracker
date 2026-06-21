@@ -16,7 +16,7 @@ import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
-from screens.common import DismissableScreen, PALETTE, tint_border
+from screens.common import DismissableScreen, PALETTE, entity_ref_options, tint_border
 from screens.modals import ConfirmScreen
 from screens.sheet import CharacterSheetScreen
 from screens.roll import RollPickerScreen
@@ -495,6 +495,11 @@ class EntityFormScreen(Screen):
                 options = [(c, c) for c in choices]
                 sel = Select(options, value=val or Select.NULL, id=f"field-{key}")
                 container.mount(sel)
+            elif ftype == "entity_ref":
+                options = entity_ref_options(choices, val)
+                sel = Select(options, value=val or Select.NULL, id=f"field-{key}",
+                              allow_blank=True, prompt=f"Select {field_label.lower()}...")
+                container.mount(sel)
             else:
                 classes = "stat-input" if ftype == "number" else None
                 container.mount(Input(value=str(val) if val else "", placeholder=field_label, id=f"field-{key}", classes=classes))
@@ -555,6 +560,9 @@ class EntityFormScreen(Screen):
         for key, _, ftype, choices in self.schema:
             widget_id = f"field-{key}"
             if ftype == "select" and choices:
+                sel = self.query_one(f"#{widget_id}", Select)
+                fields[key] = "" if sel.value is Select.NULL else str(sel.value)
+            elif ftype == "entity_ref":
                 sel = self.query_one(f"#{widget_id}", Select)
                 fields[key] = "" if sel.value is Select.NULL else str(sel.value)
             else:

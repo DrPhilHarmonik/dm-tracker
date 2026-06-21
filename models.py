@@ -51,7 +51,7 @@ ENTITY_SCHEMAS: dict[str, list[tuple]] = {
             "Lawful Evil", "Neutral Evil", "Chaotic Evil", "Unknown",
         ]),
         ("status", "Status", "select", ["Alive", "Dead", "Missing", "Unknown"]),
-        ("location", "Current Location", "text", None),
+        ("location", "Current Location", "entity_ref", "location"),
     ],
     "adventurer": [
         ("race", "Race", "text", None),
@@ -123,11 +123,11 @@ ENTITY_SCHEMAS: dict[str, list[tuple]] = {
         ("session_number", "Session #", "number", None),
         ("session_date", "Real Date (YYYY-MM-DD)", "text", None),
         ("in_game_date", "In-Game Date", "text", None),
-        ("location", "Primary Location", "text", None),
+        ("location", "Primary Location", "entity_ref", "location"),
     ],
     "encounter": [
         ("status", "Status", "select", ["Planned", "Active", "Complete"]),
-        ("location", "Location", "text", None),
+        ("location", "Location", "entity_ref", "location"),
     ],
 }
 
