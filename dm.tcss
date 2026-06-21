@@ -46,7 +46,9 @@ Label {
 #turn-advance-actions,
 #roll-ability-actions,
 #roll-attack-actions,
-#attack-roll-actions {
+#attack-roll-actions,
+#export-actions,
+#delrel-actions {
     height: auto;
     align: left middle;
 }
@@ -228,6 +230,10 @@ DataTable {
     margin: 1 0;
 }
 
+#delrel-actions Button {
+    min-width: 18;
+}
+
 /* ---- Confirm Modal ---- */
 #confirm-box {
     width: 50;
@@ -276,6 +282,14 @@ ConfirmScreen {
 
 #export-status {
     margin-top: 1;
+}
+
+#export-actions {
+    margin-top: 1;
+}
+
+#export-actions Button {
+    min-width: 16;
 }
 
 #export-stats-row {

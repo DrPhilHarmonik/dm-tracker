@@ -47,7 +47,7 @@ class CharacterSheetScreen(Screen):
                 yield ScrollableContainer(Container(id="skills-fields"), id="skills-scroll")
             with TabPane("Attacks & Traits", id="tab-attacks"):
                 yield ScrollableContainer(Container(id="attacks-fields"), id="attacks-scroll")
-        yield Container(
+        yield Horizontal(
             Button("Recalculate", id="btn-recalc", variant="primary"),
             Button("Save (Ctrl+S)", id="btn-save", variant="success"),
             Button("Cancel", id="btn-cancel", variant="default"),

@@ -284,7 +284,7 @@ class EntityDetailScreen(DismissableScreen):
             Static(id="detail-body"),
             id="detail-scroll",
         )
-        yield Container(
+        yield Horizontal(
             Button("Edit", id="btn-edit", variant="primary"),
             Button("Add Relationship", id="btn-rel", variant="default"),
             Button("Back", id="btn-back", variant="default"),
@@ -453,7 +453,7 @@ class EntityFormScreen(Screen):
             Container(id="form-fields"),
             id="form-scroll",
         )
-        yield Container(
+        yield Horizontal(
             Button("Save (Ctrl+S)", id="btn-save", variant="success"),
             Button("Cancel", id="btn-cancel", variant="default"),
             id="form-actions",
@@ -592,7 +592,7 @@ class RelationshipFormScreen(Screen):
             Container(id="rel-form"),
             id="rel-scroll",
         )
-        yield Container(
+        yield Horizontal(
             Button("Save (Ctrl+S)", id="btn-save", variant="success"),
             Button("Cancel", id="btn-cancel", variant="default"),
             id="rel-actions",
@@ -653,8 +653,11 @@ class DeleteRelScreen(Screen):
         yield Container(
             Static("Select a relationship to delete:"),
             ListView(id="rel-list"),
-            Button("Delete Selected", id="btn-del", variant="error"),
-            Button("Cancel", id="btn-cancel"),
+            Horizontal(
+                Button("Delete Selected", id="btn-del", variant="error"),
+                Button("Cancel", id="btn-cancel"),
+                id="delrel-actions",
+            ),
             id="delrel-container",
         )
         yield Footer()

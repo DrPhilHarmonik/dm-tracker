@@ -33,8 +33,11 @@ class ExportScreen(DismissableScreen):
                 Label("Include character sheets & active effects"),
                 id="export-stats-row",
             ),
-            Button("Export", id="btn-export", variant="success"),
-            Button("Cancel", id="btn-cancel"),
+            Horizontal(
+                Button("Export", id="btn-export", variant="success"),
+                Button("Cancel", id="btn-cancel"),
+                id="export-actions",
+            ),
             Static("", id="export-status"),
             id="export-container",
         )

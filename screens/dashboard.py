@@ -41,7 +41,7 @@ class Dashboard(Screen):
         yield Container(
             Static("[bold]DM Tracker[/bold] - Campaign Manager", id="title"),
             Container(id="cards"),
-            Container(
+            Horizontal(
                 Button("Export to Markdown", id="btn-export", variant="success"),
                 Button("Search All", id="btn-search", variant="primary"),
                 Button("Backup / Restore", id="btn-backup", variant="default"),
