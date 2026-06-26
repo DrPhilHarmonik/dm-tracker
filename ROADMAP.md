@@ -607,3 +607,343 @@ was still in progress, intermittently corrupting a later step's `Select`
 widget (~40% of e2e test runs failed before the fix). Fixed by only
 re-rendering when the new value actually differs from the value the step
 was built with.
+
+### Phase 13 — Defined Classes (Class-Driven Logic)
+
+Goal: make the class field as structurally meaningful as race became in
+Phase 12. `classes.py` already exists with names, hit dice, and suggested
+saving throw proficiencies, but that's as far as it goes. Phase 13 extends
+it to drive the rest of the class-relevant math the wizard and sheet need,
+and lays the groundwork Phase 11's spellcasting system requires.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Spellcasting ability per class.** Each spellcasting class gets a
+  canonical ability (Wizard/Artificer = INT, Cleric/Druid/Ranger = WIS,
+  Bard/Paladin/Sorcerer/Warlock = CHA). `classes.py` gains a
+  `spellcasting_ability` key (None for non-casters). Phase 11's spell
+  attack bonus and save DC will read this rather than asking the DM to
+  re-enter it. This is the primary prerequisite for Phase 11; everything
+  else in Phase 13 is bonus.
+- **Accurate per-level HP calculation in the wizard.** Today the Review
+  step shows a rough "d10+2=12" style suggestion. With class hit dice
+  already in `classes.py` and race bonuses now baking into CON in Phase 12,
+  the wizard can compute proper average HP: (hit_die / 2 + 1) * level +
+  (con_modifier * level), the standard 5e average-roll formula. Still
+  shown as an editable suggestion, not locked in.
+- **Armor and weapon proficiency summary.** Each class entry gains a
+  `proficiencies` key: a short freeform string ("Light armor, simple
+  weapons, hand crossbows, longswords, rapiers, shortswords") written into
+  `sheet["proficiencies"]` at creation time. No mechanical enforcement
+  (the app doesn't police which weapons a PC can wield); purely a reference
+  note on the sheet. Mirrors how senses/languages bake in from race.
+- **Primary ability suggestion.** Each class entry gains a `primary_ability`
+  key (e.g. STR for Fighter, DEX or INT for Rogue depending on build).
+  Displayed as a hint during the Standard Array assignment step ("Suggested
+  primary: STR") -- not enforced, just a nudge so new players know where to
+  put the 15.
+- **No subclass support.** Arcane Trickster, Eldritch Knight, Battle Smith
+  etc. have different spellcasting abilities than their parent class.
+  Out of scope for this phase -- a freeform "subclass" notes field is
+  sufficient, same as how non-numeric racial traits were handled in Phase 12.
+
+**Open questions for build time:**
+
+- Whether the primary-ability hint in the wizard should be a single ability
+  or a list of options (Ranger: DEX or STR; Rogue: DEX or INT for AT).
+  Could surface as "DEX or STR" label and let the DM pick, or just list
+  the most common default.
+- Whether proficiencies should be a freeform string or a structured set of
+  tags (for future filtering). A string is simpler and consistent with how
+  senses/languages work; tags would let Phase 15's encounter builder
+  eventually cross-reference armor class assumptions. Lean toward string
+  unless there's a concrete near-term need.
+
+**Estimate:** 3 points -- almost entirely a data-layer and wizard-hint
+change, no new screen. The HP formula and proficiency bake-in follow the
+same pattern Phase 12 established; the main lift is expanding `classes.py`
+and wiring the spellcasting_ability field so Phase 11 can read it.
+
+**Status:** Scoped, not started. Should land before Phase 11 since Phase 11
+depends on spellcasting_ability being present per class.
+
+---
+
+### Phase 14 — Conditions & Death Saves
+
+Goal: replace the combat tracker's freeform condition tags with the full
+14 SRD conditions as a proper library, and add death save tracking for PCs
+at 0 HP -- two gaps that come up in almost every real combat session.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Conditions library = the 14 SRD conditions, nothing more.** Blinded,
+  Charmed, Deafened, Exhaustion (levels 1-6), Frightened, Grappled,
+  Incapacitated, Invisible, Paralyzed, Petrified, Poisoned, Prone,
+  Restrained, Stunned, Unconscious. Their mechanical summaries (the SRD
+  bullet-point descriptions) are embedded as read-only reference text
+  alongside each condition in the picker UI -- so the DM can apply
+  "Paralyzed" and immediately see "Incapacitated; fails STR/DEX saves; hits
+  against this creature have advantage; attacker within 5 ft. scores a
+  crit." New `conditions.py` module holds this table.
+- **Conditions integrate with existing active effects duration.** Applying
+  a condition from the library goes through the same `active_effects`
+  mechanism Phase 4 built, with a duration in rounds (or "until dispelled"
+  as a sentinel value). Round advance already ticks effects down and removes
+  expired ones -- conditions ride that for free.
+- **Mechanical enforcement is reference-only, not enforced.** The app
+  doesn't intercept attack rolls against a prone creature and add
+  advantage automatically. The condition's text is surfaced as a reminder
+  in the combat roster summary; the DM applies the mechanical effects
+  themselves. Same philosophy as how resistances/immunities work today.
+- **Death saves are tracked per adventurer in the combat tracker only.**
+  When a PC's current HP hits 0, the combat tracker surfaces a death save
+  section for them: three success checkboxes, three failure checkboxes.
+  Checking three successes marks the PC as Stable (0 HP, not dying);
+  three failures marks them as Dead (sets a "Dead" condition). A Stable
+  marker clears on the next long rest (manual clear by DM). Death save
+  state lives in the combat encounter data, not persisted to the sheet
+  between sessions (a PC who was stabilized last session starts fresh next
+  session, per 5e rules).
+- **Enemies do not get death saves.** They go to 0 HP and are marked
+  defeated, same as today.
+
+**Open questions for build time:**
+
+- Exhaustion's 6 levels (each cumulative with the previous) are the one
+  condition that's a counter rather than a binary flag. Whether to model
+  it as a 1-6 spinner alongside the condition application or just let the
+  DM apply "Exhaustion" multiple times (stacking in the effects list) is a
+  UX judgment call at build time.
+- Whether death save results should feed back into the round-advance logic
+  (auto-roll a death save die on each of the PC's turns) or stay as
+  manual checkboxes. Manual is consistent with how the app handles all
+  rolls today (player rolls physical dice; app records the result).
+
+**Estimate:** 5 points -- `conditions.py` is straightforward data, but
+wiring it into the combat tracker UI (condition picker replacing freeform
+input, roster summary showing condition names with reference text on hover,
+death save section appearing/disappearing based on HP state) is a real
+screen-layout change touching three of the four combat tracker tabs.
+
+**Status:** Scoped, not started.
+
+---
+
+### Phase 15 — Encounter Balance Calculator
+
+Goal: help the DM know whether the fight they're building is going to be
+trivial or a TPK before the players sit down. The DMG's encounter difficulty
+math is pure arithmetic on CR/XP values the SRD fully publishes -- no
+copyright concern, and no new data beyond what the app already tracks.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Difficulty shown live in the Combat Tracker's Combatants tab as enemies
+  are added.** The DM adds enemies to the encounter the same way they do
+  today; the balance calculation is a live readout that updates with each
+  add/remove, not a separate planning screen.
+- **Math follows the DMG XP budget method.** Each CR maps to an XP value
+  (full SRD table). Enemy XP is summed, then multiplied by the encounter
+  multiplier (x1 for 1 enemy, x1.5 for 2, x2 for 3-6, x2.5 for 7-10,
+  x3 for 11-14, x4 for 15+). Party XP thresholds are the four-tier table
+  from the DMG (Easy/Medium/Hard/Deadly per character level), summed across
+  all adventurer combatants in the encounter. Difficulty rating = which
+  threshold the adjusted XP falls above. New `encounter_balance.py` module
+  holds these lookup tables and the calculation.
+- **Only enemy CR and adventurer level are needed.** Both are already
+  on each entity's sheet -- no new fields, no new input from the DM.
+  Enemies without a CR (e.g. summons, NPCs-turned-enemies without a filled
+  sheet) are excluded from the calculation with a note ("N/A -- missing
+  CR").
+- **No "build an encounter" planning mode.** The calculator answers "how
+  hard is this specific encounter I'm currently setting up" -- it doesn't
+  offer to generate a balanced encounter from scratch. That's a bigger
+  feature and a different workflow.
+
+**Open questions for build time:**
+
+- Where exactly the difficulty readout lives in the Combatants tab layout.
+  Below the combatant list and above the Add Combatant controls seems
+  natural, but the tab is already fairly full; may need to collapse the
+  readout to a single line ("Difficulty: Hard (4,200 / 3,900 threshold)")
+  that expands on focus.
+- Whether to show per-enemy XP values in the combatant list rows alongside
+  HP, or keep the list minimal and put all XP detail in the summary line.
+
+**Estimate:** 3 points -- the lookup tables and math are simple; the main
+work is fitting the readout cleanly into the existing Combatants tab UI
+without cluttering it, and writing tests for the XP multiplier edge cases.
+
+**Status:** Scoped, not started.
+
+---
+
+### Phase 16 — Character Import (D&D Beyond & Structured Formats)
+
+Goal: let a DM import their existing campaign characters without hand-
+entering every field, by reading structured data formats the DM already
+owns and controls -- not copyrighted source material, but their own
+character and campaign data.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **D&D Beyond character JSON export is the primary target.** D&D Beyond
+  lets any user export their own character as a JSON file from the
+  character sheet page. That JSON is the user's own campaign data; importing
+  it raises no copyright concerns. The importer maps D&D Beyond's ability
+  scores, class, level, HP, AC, speed, skills, and saving throw
+  proficiencies into the app's `fields["sheet"]` shape. Flavor text
+  (backstory, personality traits, bonds) maps to the entity's notes field.
+- **A simple CSV template is the secondary target.** For batch-adding NPCs,
+  locations, or enemy rosters without a D&D Beyond source: a documented
+  CSV schema (name, type, field columns matching the entity's flat schema)
+  that the DM can fill in from any spreadsheet and import in one shot.
+  The export screen already produces Markdown; the import screen (Backup &
+  Restore, which already handles JSON and Vault imports) gains a third path:
+  "Import CSV."
+- **Import is additive, never destructive.** Importing a D&D Beyond
+  character always creates a new Adventurer entity; it never overwrites an
+  existing one even if the names match. Same policy the Vault importer
+  already follows. Duplicate detection (warn if a same-named entity already
+  exists) is a courtesy, not a block.
+- **Roll20 and other VTT export formats are out of scope for this phase.**
+  Roll20's export format is less stable and less cleanly structured than
+  D&D Beyond's; adding it is a separate, incremental extension once the
+  D&D Beyond path is proven. The CSV template covers the "any VTT" case
+  adequately for now via a manual export-and-reformat step.
+- **The importer lives in a new `importers/` sub-package.** `importers/ddb.py`
+  (D&D Beyond JSON -> entity dict), `importers/csv_import.py` (CSV row ->
+  entity dict), both returning the same intermediate shape that a shared
+  `import_entity()` function hands to `db.create_entity()`. Keeps the
+  format-specific parsing out of `db.py` and out of the UI layer.
+
+**Open questions for build time:**
+
+- D&D Beyond's JSON schema has changed format at least twice since launch.
+  Whether to target the current export format only, or build a thin version-
+  detection layer that handles the last two formats, is a pragmatic call
+  at build time (probably: handle current format, log a clear error for
+  anything that looks like an older shape).
+- Whether imported characters should land directly in the Character Sheet
+  screen (same as the Quick Wizard's "Quick mode drops into sheet") or
+  in the entity detail view, so the DM can review before editing. Probably
+  the detail view, since import implies "done" not "continue filling in."
+
+**Estimate:** 6 points -- the D&D Beyond JSON mapping is the bulk of the
+work (their schema is wide; mapping it faithfully requires reading the
+format carefully and handling optional/missing fields gracefully), plus
+the CSV parser, the import UI path in Backup & Restore, and tests for
+both import paths against fixture files.
+
+**Status:** Scoped, not started.
+
+---
+
+### Phase 17 — Multi-Campaign Support
+
+Goal: make the app a first-class multi-campaign tool instead of a
+single-database tool the DM has to manage by hand via environment variable.
+A DM running two concurrent campaigns (e.g. a homebrew and a published
+adventure) should be able to switch between them in the app without touching
+the shell.
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Each campaign is a separate SQLite database file**, same as today.
+  The switch is purely which file the app points at -- no schema changes,
+  no data migration, no merged-campaign concepts.
+- **A campaign switcher lives on the Dashboard.** The top of the Dashboard
+  shows the current campaign name and a "Switch Campaign" button. The
+  switcher screen lists saved campaigns (name, last-opened date, entity
+  count as a quick summary), with options to open, create new, rename, or
+  delete. Creating a new campaign runs `db.init_db()` on a new file and
+  opens it immediately.
+- **Campaign metadata (name, created date) lives in a small `campaigns`
+  table in a separate manager database**, not in each campaign's own DB.
+  Location: `~/.local/share/dm_tracker/campaigns.db` (XDG data dir),
+  separate from any individual campaign file. This avoids "campaign
+  Strahd Run knows its own name" awkwardness and means renaming a campaign
+  in the manager is a one-row update that doesn't touch the campaign data.
+- **DM_DB_PATH env override still works** for power users and scripts.
+  When set, the app opens that file directly and skips the switcher, same
+  as today. The switcher is additive, not a replacement.
+- **No cross-campaign data sharing.** NPCs, locations, and other entities
+  are scoped to their campaign. There is no "shared NPC pool" or
+  cross-campaign relationship. If a DM wants the same recurring villain in
+  two campaigns, they create two entities.
+
+**Open questions for build time:**
+
+- Where campaign files live by default (when not using DM_DB_PATH). Options:
+  `~/.local/share/dm_tracker/<campaign-name>.db` (XDG standard),
+  `~/dm_campaigns/<name>.db` (visible/portable), or alongside the app
+  source. XDG is most correct; a first-run prompt asking where to store
+  campaigns would cover the "I want them on a shared drive" case.
+- Whether the Dashboard's campaign switcher should show a "last session"
+  summary (most recent session entity's name and date) as a quick-context
+  reminder of where each campaign left off.
+
+**Estimate:** 5 points -- the manager DB + switcher screen is new surface
+area, but the campaign-open logic is a thin wrapper around existing
+`db.init_db()` / `db.DB_PATH` machinery. The main complexity is the
+first-run flow (no campaigns yet -> prompt to create one) and making sure
+the switcher screen dismisses cleanly and re-mounts the Dashboard with the
+new campaign's entity counts.
+
+**Status:** Scoped, not started.
+
+---
+
+### Phase 18 — In-Session Quick Capture
+
+Goal: let the DM log something that just happened at the table in under
+three keystrokes, without navigating away from whatever screen they're
+currently on (usually the combat tracker or a character sheet).
+
+**Scope-checked decisions (resolved before estimating/building):**
+
+- **Global hotkey (`^n` -- Ctrl+N) opens a Quick Capture overlay from
+  anywhere in the app.** The overlay is a small modal (similar to the
+  existing Confirm dialog) with a single text input. The DM types a note
+  and presses Enter; the overlay dismisses and returns them to exactly
+  where they were. No navigation, no mode change.
+- **Captured notes append to the active session entity's notes field.**
+  "Active session" = the most recently created or last-opened Session
+  entity. If no Session entity exists, a brief inline prompt asks the DM
+  to either create one or pick an existing one; after that, the preference
+  is remembered for the rest of the app session (not persisted to DB).
+- **Optional entity tag.** Before pressing Enter, the DM can press Tab to
+  reveal a second field: "Tag to entity (optional)." Typing a partial name
+  and pressing Enter appends the same note to that entity's notes as well
+  as the session. This covers "I need to remember that Gareth the merchant
+  offered us a deal" -- the note lands on both the session and Gareth's
+  entity. The tag field autocompletes from existing entity names.
+- **No new entity type, no new DB table.** Every captured note is plain
+  text appended to an existing entity's notes field via `db.update_entity()`,
+  with a lightweight timestamp prefix ("Round 4: ...") when captured during
+  an active encounter. The existing notes field is already a freetext blob;
+  this just provides a faster path to appending to it.
+- **"Round N:" prefix is automatic when a combat is active.** The Quick
+  Capture overlay checks whether a CombatTrackerScreen is currently in the
+  screen stack; if so, it reads the current round number and prefixes the
+  note with it. If not, no prefix (or a bare timestamp if the DM prefers
+  -- open question).
+
+**Open questions for build time:**
+
+- Whether the timestamp/round prefix should be configurable (round number
+  only, wall-clock time only, both, none) or just hardcoded to round number
+  during combat and nothing outside.
+- Whether "Tag to entity" should support tagging multiple entities in one
+  capture (e.g. both the merchant and the quest he's offering), or stay
+  as a single-entity tag per capture to keep the overlay minimal. Single
+  tag is probably right for v1.
+
+**Estimate:** 4 points -- the overlay itself is small, but detecting
+"active session" reliably (what if the DM hasn't opened a Session entity
+yet?), wiring the entity autocomplete, and inserting the round-prefix
+cleanly around the combat tracker's screen-stack state adds enough edge
+cases to warrant care.
+
+**Status:** Scoped, not started.
