@@ -86,6 +86,8 @@ def default_sheet() -> dict:
         "immunities": "",
         "vulnerabilities": "",
         "special_abilities": [],
+        "proficiencies": "",
+        "spellcasting_ability": "",
     }
 
 

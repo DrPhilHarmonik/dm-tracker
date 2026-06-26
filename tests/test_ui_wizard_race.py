@@ -185,3 +185,77 @@ def test_half_elf_rejects_choosing_the_same_ability_twice(monkeypatch, tmp_path)
             assert "different abilities" in str(wiz.query_one("#wizard-error").content)
 
     run(scenario)
+
+
+# -- Phase 13: class data bake-in -----------------------------------------
+
+def test_wizard_bakes_proficiencies_hit_dice_and_spellcasting_into_sheet(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    async def scenario():
+        app = DMApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            await pilot.press("a")
+            await pilot.pause()
+            app.screen.action_wizard("quick")
+            await pilot.pause()
+            wiz = app.screen
+            wiz.query_one("#wiz-name", Input).value = "Lyra Ashveil"
+            await wiz._go_next()   # basic -> race
+            await pilot.pause()
+            wiz.query_one("#wiz-race-select", Select).value = "High Elf"
+            await wiz._go_next()   # race -> class_or_cr
+            await pilot.pause()
+            wiz.query_one("#wiz-class", Select).value = "Wizard"
+            wiz.query_one("#wiz-level", Input).value = "3"
+            await wiz._go_next()   # class_or_cr -> abilities
+            await pilot.pause()
+            await wiz._go_next()   # abilities -> review
+            await pilot.pause()
+            await wiz._go_next()   # create
+            await pilot.pause()
+
+    run(scenario)
+
+    adv = db.list_entities("adventurer")[0]
+    sheet = adv["fields"]["sheet"]
+    assert sheet["hit_dice"] == "3d6"
+    assert sheet["spellcasting_ability"] == "int"
+    assert "light crossbows" in sheet["proficiencies"]
+
+
+def test_non_caster_has_no_spellcasting_ability_on_sheet(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+
+    async def scenario():
+        app = DMApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            await pilot.press("a")
+            await pilot.pause()
+            app.screen.action_wizard("quick")
+            await pilot.pause()
+            wiz = app.screen
+            wiz.query_one("#wiz-name", Input).value = "Gorrak"
+            await wiz._go_next()   # basic -> race
+            await pilot.pause()
+            await wiz._go_next()   # race (default Human) -> class_or_cr
+            await pilot.pause()
+            wiz.query_one("#wiz-class", Select).value = "Barbarian"
+            await wiz._go_next()   # class_or_cr -> abilities
+            await pilot.pause()
+            await wiz._go_next()   # abilities -> review
+            await pilot.pause()
+            await wiz._go_next()   # create
+            await pilot.pause()
+
+    run(scenario)
+
+    adv = db.list_entities("adventurer")[0]
+    sheet = adv["fields"]["sheet"]
+    assert sheet["hit_dice"] == "1d12"
+    assert sheet.get("spellcasting_ability", "") == ""
+    assert "martial weapons" in sheet["proficiencies"]

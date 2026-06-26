@@ -249,11 +249,19 @@ class WizardScreen(DismissableScreen):
                 Static(f"+{bonus} race" if bonus else "", classes="race-bonus-badge"),
                 classes="ability-row",
             ))
-        await container.mount(
-            Static(f"[bold]Ability Scores[/] - assign the Standard Array {shm.STANDARD_ARRAY}"),
-            *rows,
-            Button("Reset to Standard Array Order", id="btn-wiz-reset-array"),
-        )
+        widgets = [Static(f"[bold]Ability Scores[/] - assign the Standard Array {shm.STANDARD_ARRAY}")]
+        if self.entity_type == "adventurer":
+            class_name = self.data.get("class_name", "")
+            primary = classes.CLASS_PRIMARY_ABILITY.get(class_name, "")
+            spell_ab = classes.CLASS_SPELLCASTING_ABILITY.get(class_name)
+            parts = []
+            if primary:
+                parts.append(f"Primary: {primary.upper()}")
+            if spell_ab:
+                parts.append(f"Spellcasting: {spell_ab.upper()}")
+            if parts:
+                widgets.append(Static("  ".join(parts), classes="wiz-class-hint"))
+        await container.mount(*widgets, *rows, Button("Reset to Standard Array Order", id="btn-wiz-reset-array"))
 
     async def _build_step_skills_saves(self, container):
         save_rows = [
@@ -569,6 +577,12 @@ class WizardScreen(DismissableScreen):
                 sheet_data["speed"] = race_data["speed"]
                 sheet_data["senses"] = race_data["senses"]
                 sheet_data["languages"] = race_data["languages"]
+            class_name = self.data["class_name"]
+            sheet_data["hit_dice"] = classes.hit_dice_notation(class_name, self.data["level"])
+            sheet_data["proficiencies"] = classes.CLASS_PROFICIENCIES.get(class_name, "")
+            spell_ab = classes.CLASS_SPELLCASTING_ABILITY.get(class_name)
+            if spell_ab:
+                sheet_data["spellcasting_ability"] = spell_ab
             flat_fields = {
                 "race": self.data["race"],
                 "class_name": self.data["class_name"],

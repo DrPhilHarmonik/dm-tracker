@@ -700,6 +700,11 @@ ConfirmScreen {
     margin-bottom: 1;
 }
 
+.wiz-class-hint {
+    color: #c3e88d;
+    margin-bottom: 1;
+}
+
 #wizard-nav {
     height: auto;
 }
