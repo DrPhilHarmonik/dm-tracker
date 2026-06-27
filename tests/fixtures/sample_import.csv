@@ -1,0 +1,6 @@
+name,type,race,class_name,level,cr,creature_type,role,alignment,status,str,dex,con,int,wis,cha,ac,hp_max,speed,notes
+Brynn Ashforge,adventurer,Human,Fighter,5,,,,Lawful Good,Active,15,14,13,12,10,8,16,44,30,Veteran soldier from the north
+Mira Vex,adventurer,Tiefling,Rogue,3,,,,Chaotic Neutral,Active,9,17,13,13,10,14,14,21,30,Infiltrator and spy
+Goblin Boss,enemy,,,,1,Humanoid,,Neutral Evil,Alive,10,14,10,10,8,8,15,21,30,Cunning leader of the raid
+Mira the Innkeeper,npc,Human,,,,,Innkeeper,Neutral Good,Alive,,,,,,,,,,Runs the Laughing Flagon in Saltmarsh
+Saltmarsh,location,,,,,,,,,,,,,,,,,,Fishing town on the coast

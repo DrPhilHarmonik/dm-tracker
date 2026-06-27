@@ -853,7 +853,17 @@ format carefully and handling optional/missing fields gracefully), plus
 the CSV parser, the import UI path in Backup & Restore, and tests for
 both import paths against fixture files.
 
-**Status:** Scoped, not started.
+**Status: Done.** New `importers/` package: `__init__.py` holds the shared
+`import_entity()` function (always additive, warns on duplicate names, never
+overwrites); `ddb.py` parses D&D Beyond character export JSON (with and without
+the `"data"` wrapper), mapping abilities, class/level, HP, AC, speed, race,
+notes, skill proficiencies (via skills[].value), and baking in class data from
+`classes.py`; `csv_import.py` handles a unified-header CSV covering all entity
+types in one file (adventurers and enemies get sheet columns auto-assembled;
+NPCs/locations use flat fields; Download Template writes a commented example).
+Both importers are wired into Backup & Restore with new Import D&D Beyond
+Character and Import CSV sections. Fixture files in `tests/fixtures/`. 23 new
+tests, 216 total.
 
 ---
 

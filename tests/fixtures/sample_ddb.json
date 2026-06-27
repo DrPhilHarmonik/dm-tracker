@@ -1,0 +1,69 @@
+{
+  "id": 87654321,
+  "name": "Lyra Moonwhisper",
+  "currentXp": 6500,
+  "stats": [
+    {"id": 1, "value": 8},
+    {"id": 2, "value": 14},
+    {"id": 3, "value": 13},
+    {"id": 4, "value": 16},
+    {"id": 5, "value": 10},
+    {"id": 6, "value": 12}
+  ],
+  "bonusStats": [
+    {"id": 1, "value": null}, {"id": 2, "value": null},
+    {"id": 3, "value": null}, {"id": 4, "value": null},
+    {"id": 5, "value": null}, {"id": 6, "value": null}
+  ],
+  "overrideStats": [
+    {"id": 1, "value": null}, {"id": 2, "value": null},
+    {"id": 3, "value": null}, {"id": 4, "value": null},
+    {"id": 5, "value": null}, {"id": 6, "value": null}
+  ],
+  "classes": [
+    {
+      "id": 1234,
+      "level": 5,
+      "isStartingClass": true,
+      "hitDiceUsed": 1,
+      "definition": {
+        "id": 12,
+        "name": "Wizard",
+        "hitDice": 6
+      },
+      "subclassDefinition": null
+    }
+  ],
+  "race": {
+    "fullName": "High Elf",
+    "baseName": "Elf",
+    "subRaceShortName": "High",
+    "weightSpeeds": {
+      "normal": {"walk": 30, "fly": 0, "burrow": 0, "swim": 0, "climb": 0}
+    }
+  },
+  "baseHitPoints": 28,
+  "bonusHitPoints": 0,
+  "overrideHitPoints": null,
+  "removedHitPoints": 5,
+  "temporaryHitPoints": 0,
+  "armorClass": 13,
+  "skills": [
+    {"id": 3, "value": 1},
+    {"id": 6, "value": 1},
+    {"id": 15, "value": 2}
+  ],
+  "notes": {
+    "backstory": "Born in the great forest of Myth Drannor, Lyra left home to study at the Academy of Arcane Arts.",
+    "allies": "The Harpers",
+    "organizations": "",
+    "enemies": "The Zhentarim",
+    "other": ""
+  },
+  "traits": {
+    "personalityTraits": "I speak in metaphors and use flowery speech.",
+    "ideals": "Knowledge is the greatest treasure.",
+    "bonds": "I must recover the spellbook my mentor left behind.",
+    "flaws": "I tend to get lost in research and forget basic needs."
+  }
+}

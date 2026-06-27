@@ -56,6 +56,8 @@ Label {
 #backup-status,
 #restore-status,
 #vault-import-status,
+#ddb-import-status,
+#csv-import-status,
 #export-status,
 #wizard-error,
 #roll-result {
@@ -325,14 +327,20 @@ ConfirmScreen {
     height: auto;
 }
 
-#backup-title, #vault-import-title {
+#backup-title, #vault-import-title, #ddb-import-title, #csv-import-title {
     text-style: bold;
     color: #f78c6c;
     margin-bottom: 2;
 }
 
-#vault-import-title {
+#vault-import-title, #ddb-import-title, #csv-import-title {
     margin-top: 2;
+}
+
+#csv-import-actions {
+    height: auto;
+    align: left middle;
+    margin-top: 1;
 }
 
 #backup-container Label {
