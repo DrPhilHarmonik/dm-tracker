@@ -12,6 +12,7 @@ import export as exp
 import sheet as shm
 import dice
 import combat as cbt
+import conditions as cnd
 import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
@@ -48,6 +49,8 @@ class CombatTrackerScreen(DismissableScreen):
         await self._build_combatants_tab()
         await self._build_hp_conditions_tab()
         await self._build_turn_controls_tab()
+        self.query_one("#input-condition-custom").display = False
+        self.query_one("#death-save-section").display = False
         self._refresh_summary()
         self._sync_attacker_to_current_turn()
 
@@ -131,12 +134,29 @@ class CombatTrackerScreen(DismissableScreen):
                 id="hp-actions",
             ),
             Label("Add Condition"),
-            Input(placeholder="Condition name (e.g. Prone)", id="input-condition-name"),
+            Select(
+                [(name, name) for name in cnd.CONDITION_NAMES] + [("Custom...", "__custom__")],
+                id="sel-condition-name",
+                prompt="Choose condition...",
+                allow_blank=True,
+            ),
+            Static("", id="condition-desc"),
+            Input(placeholder="Custom condition name", id="input-condition-custom"),
             Input(placeholder="Rounds remaining (blank = indefinite)", id="input-condition-rounds"),
             Button("Add Condition", id="btn-add-condition"),
             Label("Current Conditions (select one, then Remove)"),
             ListView(id="list-conditions"),
             Button("Remove Selected Condition", id="btn-remove-condition", variant="error"),
+            Container(
+                Static("Death Saves", id="death-save-heading"),
+                Static("", id="death-save-status"),
+                Horizontal(
+                    Button("+ Success", id="btn-ds-success", variant="success"),
+                    Button("+ Failure", id="btn-ds-failure", variant="error"),
+                    id="death-save-actions",
+                ),
+                id="death-save-section",
+            ),
         )
 
     async def _build_turn_controls_tab(self):
@@ -355,6 +375,22 @@ class CombatTrackerScreen(DismissableScreen):
         self.query_one("#attack-roll-result", Static).update(f"{attack.get('name', '?')} damage: {result.detail}")
         self.query_one("#input-hp-amount", Input).value = str(result.total)
 
+    @on(Select.Changed, "#sel-condition-name")
+    def _on_condition_name_changed(self, event: Select.Changed):
+        custom_input = self.query_one("#input-condition-custom", Input)
+        desc = self.query_one("#condition-desc", Static)
+        if event.value is Select.NULL:
+            custom_input.display = False
+            desc.update("")
+            return
+        name = str(event.value)
+        if name == "__custom__":
+            custom_input.display = True
+            desc.update("")
+        else:
+            custom_input.display = False
+            desc.update(cnd.CONDITIONS.get(name, ""))
+
     @on(Select.Changed, "#sel-attack-attacker")
     def _on_attack_attacker_changed(self, event: Select.Changed):
         self._refresh_attack_choices()
@@ -392,19 +428,67 @@ class CombatTrackerScreen(DismissableScreen):
         self._refresh_summary()
 
     def _add_condition(self):
-        sel = self.query_one("#sel-hp-target", Select)
-        if sel.value is Select.NULL:
+        target_sel = self.query_one("#sel-hp-target", Select)
+        if target_sel.value is Select.NULL:
             return
-        name = self.query_one("#input-condition-name", Input).value.strip()
+        cond_sel = self.query_one("#sel-condition-name", Select)
+        if cond_sel.value is Select.NULL:
+            return
+        if str(cond_sel.value) == "__custom__":
+            name = self.query_one("#input-condition-custom", Input).value.strip()
+        else:
+            name = str(cond_sel.value)
         if not name:
             return
         rounds_raw = self.query_one("#input-condition-rounds", Input).value.strip()
         rounds = int(rounds_raw) if rounds_raw else None
-        entity_id = int(str(sel.value))
+        entity_id = int(str(target_sel.value))
         self.combat = cbt.add_condition(self.combat, entity_id, name, rounds)
-        self.query_one("#input-condition-name", Input).value = ""
+        self.query_one("#input-condition-custom", Input).value = ""
         self.query_one("#input-condition-rounds", Input).value = ""
         self._persist()
+        self._refresh_conditions_list(entity_id)
+
+    def _refresh_death_save_section(self):
+        sel = self.query_one("#sel-hp-target", Select)
+        section = self.query_one("#death-save-section")
+        if sel.value is Select.NULL:
+            section.display = False
+            return
+        entity_id = int(str(sel.value))
+        entity = db.get_entity(entity_id)
+        if not entity or entity["type"] != "adventurer":
+            section.display = False
+            return
+        sheet_data = self._effective_sheet(entity)
+        if sheet_data["hp_current"] > 0:
+            section.display = False
+            return
+        combatant = next((c for c in self.combat["combatants"] if c["entity_id"] == entity_id), None)
+        if not combatant:
+            section.display = False
+            return
+        saves = combatant["death_saves"]
+        self.query_one("#death-save-heading", Static).update(f"Death Saves -- {entity['name']}")
+        self.query_one("#death-save-status", Static).update(
+            f"Successes: {saves['successes']}/3    Failures: {saves['failures']}/3"
+        )
+        section.display = True
+
+    def _add_death_save(self, success: bool):
+        sel = self.query_one("#sel-hp-target", Select)
+        if sel.value is Select.NULL:
+            return
+        entity_id = int(str(sel.value))
+        self.combat, resolution = cbt.add_death_save(self.combat, entity_id, success)
+        if resolution == "stable":
+            self.combat = cbt.add_condition(self.combat, entity_id, "Stable", None)
+            self.combat = cbt.reset_death_saves(self.combat, entity_id)
+        elif resolution == "dead":
+            self.combat = cbt.add_condition(self.combat, entity_id, "Dead", None)
+            self.combat = cbt.reset_death_saves(self.combat, entity_id)
+        self._persist()
+        self._refresh_death_save_section()
         self._refresh_conditions_list(entity_id)
 
     def _remove_condition(self):
@@ -422,8 +506,11 @@ class CombatTrackerScreen(DismissableScreen):
     @on(Select.Changed, "#sel-hp-target")
     def _on_hp_target_changed(self, event: Select.Changed):
         if event.value is Select.NULL:
+            self.query_one("#death-save-section").display = False
             return
-        self._refresh_conditions_list(int(str(event.value)))
+        entity_id = int(str(event.value))
+        self._refresh_conditions_list(entity_id)
+        self._refresh_death_save_section()
 
     def on_button_pressed(self, event: Button.Pressed):
         bid = event.button.id
@@ -458,8 +545,10 @@ class CombatTrackerScreen(DismissableScreen):
             self._end_encounter()
         elif bid == "btn-damage":
             self._apply_hp_delta(damage=True)
+            self._refresh_death_save_section()
         elif bid == "btn-heal":
             self._apply_hp_delta(damage=False)
+            self._refresh_death_save_section()
         elif bid == "btn-add-condition":
             self._add_condition()
         elif bid == "btn-remove-condition":
@@ -468,3 +557,7 @@ class CombatTrackerScreen(DismissableScreen):
             self._roll_attack_to_hit()
         elif bid == "btn-roll-attack-damage":
             self._roll_attack_damage()
+        elif bid == "btn-ds-success":
+            self._add_death_save(success=True)
+        elif bid == "btn-ds-failure":
+            self._add_death_save(success=False)

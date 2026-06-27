@@ -583,6 +583,35 @@ ConfirmScreen {
     border: solid #0f3460;
 }
 
+#condition-desc {
+    color: #82aaff;
+    margin-bottom: 1;
+    min-height: 2;
+}
+
+#death-save-section {
+    margin-top: 2;
+    padding: 1;
+    border: solid #ff5370;
+    background: #1a0a0e;
+}
+
+#death-save-heading {
+    text-style: bold;
+    color: #ff5370;
+    margin-bottom: 1;
+}
+
+#death-save-status {
+    color: #c3e88d;
+    margin-bottom: 1;
+}
+
+#death-save-actions {
+    height: auto;
+    align: left middle;
+}
+
 #combat-summary-scroll {
     height: auto;
     max-height: 14;

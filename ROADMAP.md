@@ -726,7 +726,18 @@ input, roster summary showing condition names with reference text on hover,
 death save section appearing/disappearing based on HP state) is a real
 screen-layout change touching three of the four combat tracker tabs.
 
-**Status:** Scoped, not started.
+**Status: Done.** New `conditions.py` holds all 15 SRD conditions (Exhaustion
+included) with 1-2 sentence mechanical summaries. The combat tracker's
+freeform condition Input is replaced by a `Select` picker; selecting a
+condition immediately shows its description in blue below the dropdown.
+"Custom..." option reveals a text Input for homebrew/unlisted conditions.
+Death save tracking appears automatically when a combatant is an Adventurer
+at 0 HP: + Success / + Failure buttons track the count; 3 successes applies
+"Stable" and resets, 3 failures applies "Dead" and resets. Enemy entities
+never show the death save section. `combat.py` gains `add_death_save()` and
+`reset_death_saves()`; `normalize_combat()` backfills `death_saves: {successes,
+failures}` on old combatant records. Exhaustion treated as a regular
+condition (apply multiple times to stack levels). 19 new tests.
 
 ---
 

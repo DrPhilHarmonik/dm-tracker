@@ -26,6 +26,10 @@ def normalize_combat(raw: dict | None) -> dict:
                 {"name": str(cond.get("name", "")), "rounds_remaining": cond.get("rounds_remaining")}
                 for cond in (c.get("conditions") or [])
             ],
+            "death_saves": {
+                "successes": max(0, min(3, int((c.get("death_saves") or {}).get("successes") or 0))),
+                "failures": max(0, min(3, int((c.get("death_saves") or {}).get("failures") or 0))),
+            },
         }
         for c in (raw.get("combatants") or [])
     ]
@@ -36,7 +40,12 @@ def add_combatant(combat: dict, entity_id: int) -> dict:
     combat = normalize_combat(combat)
     if any(c["entity_id"] == entity_id for c in combat["combatants"]):
         return combat
-    combat["combatants"].append({"entity_id": entity_id, "initiative": 0, "conditions": []})
+    combat["combatants"].append({
+        "entity_id": entity_id,
+        "initiative": 0,
+        "conditions": [],
+        "death_saves": {"successes": 0, "failures": 0},
+    })
     return combat
 
 
@@ -124,6 +133,32 @@ def remove_condition(combat: dict, entity_id: int, index: int) -> dict:
     for c in combat["combatants"]:
         if c["entity_id"] == entity_id and 0 <= index < len(c["conditions"]):
             c["conditions"].pop(index)
+    return combat
+
+
+def add_death_save(combat: dict, entity_id: int, success: bool) -> tuple[dict, str | None]:
+    """Record one death save result. Returns (combat, resolution) where
+    resolution is 'stable' (3 successes), 'dead' (3 failures), or None."""
+    combat = normalize_combat(combat)
+    for c in combat["combatants"]:
+        if c["entity_id"] == entity_id:
+            if success:
+                c["death_saves"]["successes"] = min(3, c["death_saves"]["successes"] + 1)
+                if c["death_saves"]["successes"] >= 3:
+                    return combat, "stable"
+            else:
+                c["death_saves"]["failures"] = min(3, c["death_saves"]["failures"] + 1)
+                if c["death_saves"]["failures"] >= 3:
+                    return combat, "dead"
+            return combat, None
+    return combat, None
+
+
+def reset_death_saves(combat: dict, entity_id: int) -> dict:
+    combat = normalize_combat(combat)
+    for c in combat["combatants"]:
+        if c["entity_id"] == entity_id:
+            c["death_saves"] = {"successes": 0, "failures": 0}
     return combat
 
 
