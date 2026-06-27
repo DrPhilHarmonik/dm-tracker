@@ -207,6 +207,15 @@ def list_entities(type_: str = None, search: str = None) -> list[dict]:
         return [_row(r) for r in rows]
 
 
+def latest_session() -> dict | None:
+    """Return the most recently created session entity, or None."""
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT * FROM entities WHERE type='session' ORDER BY created_at DESC, id DESC LIMIT 1"
+        ).fetchone()
+        return _row(row)
+
+
 def search_all(search: str) -> list[dict]:
     like = f"%{search}%"
     sql = (

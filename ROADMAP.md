@@ -982,4 +982,14 @@ yet?), wiring the entity autocomplete, and inserting the round-prefix
 cleanly around the combat tracker's screen-stack state adds enough edge
 cases to warrant care.
 
-**Status:** Scoped, not started.
+**Status: Done.** `screens/quick_capture.py` -- `QuickCaptureModal` opens
+from `ctrl+n` anywhere in the app. Clean one-field overlay: header shows
+current round and session name; Enter saves; Tab reveals a live-filtered
+entity tag field (autocomplete from all entities, up to 10 matches). Note
+appends to the active session's notes field; if a tag entity is also selected,
+appends there too. If no session exists, warns and requires an entity tag to
+save. On save, a toast notification confirms where the note landed.
+Round prefix (`[Round N] `) is auto-injected when a CombatTrackerScreen is
+in the screen stack; omitted otherwise. `db.latest_session()` picks the most
+recently created session; active session is cached on the App object for
+the rest of the run. 14 new tests, 248 total.

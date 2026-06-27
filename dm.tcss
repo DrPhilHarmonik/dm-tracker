@@ -264,6 +264,60 @@ ConfirmScreen {
     background: rgba(0,0,0,0.7);
 }
 
+/* ---- Quick Capture Modal ---- */
+QuickCaptureModal {
+    align: center middle;
+    background: rgba(0, 0, 0, 0.75);
+}
+
+#qc-box {
+    width: 70;
+    height: auto;
+    max-height: 36;
+    padding: 2 3;
+    background: #16213e;
+    border: solid #c792ea;
+}
+
+#qc-header {
+    text-style: bold;
+    margin-bottom: 1;
+    color: #c792ea;
+}
+
+#qc-tag-hint {
+    color: #546e7a;
+    margin-top: 1;
+}
+
+#qc-box Label {
+    margin-top: 1;
+    color: #b2ccd6;
+}
+
+#qc-box Input {
+    width: 1fr;
+    margin-bottom: 0;
+}
+
+#qc-entity-list {
+    height: 6;
+    margin-top: 1;
+    background: #1a1a2e;
+    border: solid #0f3460;
+}
+
+#qc-status {
+    min-height: 1;
+    margin-top: 1;
+}
+
+#qc-actions {
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+}
+
 /* ---- Campaign Switcher ---- */
 #campaign-scroll {
     height: 1fr;
