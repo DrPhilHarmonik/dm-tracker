@@ -264,6 +264,51 @@ ConfirmScreen {
     background: rgba(0,0,0,0.7);
 }
 
+/* ---- Campaign Switcher ---- */
+#campaign-scroll {
+    height: 1fr;
+}
+
+#campaign-container {
+    padding: 2 4;
+    height: auto;
+}
+
+#campaign-title, #new-campaign-title {
+    text-style: bold;
+    color: #c792ea;
+    margin-bottom: 1;
+}
+
+#new-campaign-title {
+    margin-top: 2;
+}
+
+#campaign-table {
+    height: 10;
+    margin-bottom: 1;
+    background: #16213e;
+}
+
+#campaign-actions {
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#campaign-status {
+    min-height: 1;
+    margin-bottom: 1;
+}
+
+#campaign-container Label {
+    margin-top: 1;
+}
+
+#campaign-container Input {
+    width: 1fr;
+}
+
 /* ---- Export ---- */
 #export-container {
     padding: 2 4;

@@ -1,7 +1,10 @@
+import os
+
 from textual.app import App
 from textual.binding import Binding
 
 import db
+import campaign_manager as cm
 from screens.dashboard import Dashboard
 
 
@@ -12,6 +15,9 @@ class DMApp(App):
     BINDINGS = [Binding("ctrl+q", "quit", "Quit")]
 
     def on_mount(self):
+        if not os.environ.get("DM_DB_PATH"):
+            path = cm.ensure_default()
+            db.set_db_path(path)
         db.init_db()
         self.push_screen("dashboard")
 

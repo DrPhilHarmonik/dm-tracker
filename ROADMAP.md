@@ -918,7 +918,16 @@ first-run flow (no campaigns yet -> prompt to create one) and making sure
 the switcher screen dismisses cleanly and re-mounts the Dashboard with the
 new campaign's entity counts.
 
-**Status:** Scoped, not started.
+**Status: Done.** New `campaign_manager.py` handles the registry DB at
+`~/.local/share/dm_tracker/campaigns.db`; campaign files default to
+`~/.local/share/dm_tracker/campaigns/<name>.db`. `db.set_db_path()` switches
+the active DB at runtime via env var. App startup auto-creates "My Campaign"
+on first run if none exist; `DM_DB_PATH` still bypasses the manager entirely.
+Dashboard title shows "DM Tracker -- <campaign name>"; new "Switch Campaign"
+button and `^w` hotkey open the CampaignSwitcherScreen (DataTable with name,
+last opened, entity count, path; Open/Rename/Delete + Create Campaign).
+Rename is registry-only (file untouched); Delete removes from registry without
+deleting the file. 18 new tests, 234 total.
 
 ---
 

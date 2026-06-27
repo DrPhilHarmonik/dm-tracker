@@ -21,6 +21,11 @@ def db_path() -> Path:
     return DEFAULT_DB_PATH
 
 
+def set_db_path(path: str) -> None:
+    """Switch the active campaign database at runtime."""
+    os.environ["DM_DB_PATH"] = str(path)
+
+
 def get_conn():
     path = db_path()
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -14,10 +14,12 @@ import dice
 import combat as cbt
 import effects as fx
 import classes
+import campaign_manager as cm
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
 from screens.entities import EntityListScreen, GlobalSearchScreen
 from screens.backup import ExportScreen, BackupScreen
+from screens.campaigns import CampaignSwitcherScreen
 from screens.common import DismissableScreen, PALETTE
 
 class Dashboard(Screen):
@@ -34,14 +36,16 @@ class Dashboard(Screen):
         Binding("e", "export", "Export MD"),
         Binding("/", "search", "Search All"),
         Binding("b", "backup", "Backup/Restore"),
+        Binding("ctrl+w", "campaigns", "Campaigns"),
     ]
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield Container(
-            Static("[bold]DM Tracker[/bold] - Campaign Manager", id="title"),
+            Static("", id="title"),
             Container(id="cards"),
             Horizontal(
+                Button("Switch Campaign", id="btn-campaigns", variant="default"),
                 Button("Export to Markdown", id="btn-export", variant="success"),
                 Button("Search All", id="btn-search", variant="primary"),
                 Button("Backup / Restore", id="btn-backup", variant="default"),
@@ -57,7 +61,16 @@ class Dashboard(Screen):
     async def on_screen_resume(self):
         await self.refresh_cards()
 
+    def _campaign_name(self) -> str:
+        try:
+            return cm.current_name()
+        except Exception:
+            return db.db_path().stem
+
     async def refresh_cards(self):
+        self.query_one("#title", Static).update(
+            f"[bold]DM Tracker[/bold]  --  {self._campaign_name()}"
+        )
         counts = db.entity_counts()
         cards = self.query_one("#cards")
         await cards.remove_children()
@@ -78,6 +91,8 @@ class Dashboard(Screen):
         if btn_id and btn_id.startswith("card-"):
             type_ = btn_id[5:]
             self.app.push_screen(EntityListScreen(type_))
+        elif btn_id == "btn-campaigns":
+            self.action_campaigns()
         elif btn_id == "btn-export":
             self.action_export()
         elif btn_id == "btn-search":
@@ -96,3 +111,6 @@ class Dashboard(Screen):
 
     def action_backup(self):
         self.app.push_screen(BackupScreen())
+
+    def action_campaigns(self):
+        self.app.push_screen(CampaignSwitcherScreen())
