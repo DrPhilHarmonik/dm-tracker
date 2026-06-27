@@ -13,6 +13,7 @@ import sheet as shm
 import dice
 import combat as cbt
 import conditions as cnd
+import encounter_balance as enc_bal
 import effects as fx
 import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
@@ -52,6 +53,7 @@ class CombatTrackerScreen(DismissableScreen):
         self.query_one("#input-condition-custom").display = False
         self.query_one("#death-save-section").display = False
         self._refresh_summary()
+        self._refresh_balance_readout()
         self._sync_attacker_to_current_turn()
 
     # -- option helpers ---------------------------------------------------
@@ -104,6 +106,7 @@ class CombatTrackerScreen(DismissableScreen):
             Label("Remove Combatant"),
             Select(self._combatant_options(), id="sel-remove-combatant", prompt="Choose combatant..."),
             Button("Remove from Encounter", id="btn-remove-combatant", variant="error"),
+            Static("", id="balance-readout"),
         )
 
     async def _build_hp_conditions_tab(self):
@@ -181,6 +184,63 @@ class CombatTrackerScreen(DismissableScreen):
         db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
         self._refresh_summary()
         self._refresh_combatant_selects()
+        self._refresh_balance_readout()
+
+    def _refresh_balance_readout(self):
+        enemy_crs = []
+        adventurer_levels = []
+        for c in self.combat["combatants"]:
+            entity = db.get_entity(c["entity_id"])
+            if not entity:
+                continue
+            sheet_data = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+            if entity["type"] == "enemy":
+                enemy_crs.append(str(sheet_data.get("cr", "")) or None)
+            elif entity["type"] == "adventurer":
+                try:
+                    adventurer_levels.append(int(sheet_data.get("level", 1) or 1))
+                except (TypeError, ValueError):
+                    adventurer_levels.append(1)
+
+        widget = self.query_one("#balance-readout", Static)
+        if not self.combat["combatants"]:
+            widget.update("")
+            return
+
+        result = enc_bal.calculate_difficulty(enemy_crs, adventurer_levels)
+        difficulty = result["difficulty"]
+
+        if difficulty == "Unknown":
+            if not adventurer_levels:
+                widget.update("[dim]Balance: add adventurers to calculate difficulty[/dim]")
+            else:
+                widget.update("[dim]Balance: no enemies with CR yet[/dim]")
+            return
+
+        color = {"Trivial": "#c3e88d", "Easy": "#c3e88d", "Medium": "#ffcb6b",
+                 "Hard": "#f78c6c", "Deadly": "#ff5370"}.get(difficulty, "#ffffff")
+        xp_str = f"{result['adjusted_xp']:,}"
+        thresh = result["thresholds"]
+        next_thresh = None
+        if difficulty == "Trivial":
+            next_thresh = f"Easy at {thresh['easy']:,}"
+        elif difficulty == "Easy":
+            next_thresh = f"Medium at {thresh['medium']:,}"
+        elif difficulty == "Medium":
+            next_thresh = f"Hard at {thresh['hard']:,}"
+        elif difficulty == "Hard":
+            next_thresh = f"Deadly at {thresh['deadly']:,}"
+
+        line = f"Balance: [{color}]{difficulty}[/] ({xp_str} adj. XP"
+        if result["multiplier"] != 1.0:
+            line += f" x{result['multiplier']}"
+        line += ")"
+        if next_thresh:
+            line += f"  --  next: {next_thresh}"
+        if result["excluded_count"]:
+            line += f"  [dim]({result['excluded_count']} enemy/enemies missing CR, excluded)[/dim]"
+
+        widget.update(line)
 
     def _set_encounter_status(self, status: str):
         entity = db.get_entity(self.entity_id)

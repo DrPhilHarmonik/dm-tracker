@@ -786,7 +786,13 @@ copyright concern, and no new data beyond what the app already tracks.
 work is fitting the readout cleanly into the existing Combatants tab UI
 without cluttering it, and writing tests for the XP multiplier edge cases.
 
-**Status:** Scoped, not started.
+**Status: Done.** New `encounter_balance.py` module holds the full SRD CR-to-XP
+table (CR 0 through CR 30), DMG per-character level thresholds (Easy/Medium/Hard/
+Deadly for levels 1-20), and DMG encounter multipliers by enemy count. The
+Combatants tab gains a live `#balance-readout` widget that updates on every
+add/remove: shows difficulty label in matching color (green/yellow/orange/red),
+adjusted XP with multiplier, and the next threshold to watch. Enemies missing a
+CR are excluded from the calculation with a count note. 15 new tests.
 
 ---
 

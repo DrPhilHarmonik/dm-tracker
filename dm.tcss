@@ -583,6 +583,14 @@ ConfirmScreen {
     border: solid #0f3460;
 }
 
+#balance-readout {
+    margin-top: 2;
+    padding: 1;
+    background: #16213e;
+    border: solid #0f3460;
+    min-height: 3;
+}
+
 #condition-desc {
     color: #82aaff;
     margin-bottom: 1;
