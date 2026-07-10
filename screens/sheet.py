@@ -414,6 +414,18 @@ class CharacterSheetScreen(Screen):
             )
         self.query_one("#sheet-prof-bonus", Static).update(shm.format_modifier(pb))
         self.sheet = sheet
+        # Update spellcasting stat bar if the tab has been built
+        try:
+            spell_ability = sheet.get("spellcasting_ability") or ""
+            if spell_ability:
+                dc = shm.spell_save_dc(sheet, self.entity_type)
+                atk = shm.spell_attack_bonus(sheet, self.entity_type)
+                label = shm.ABILITY_LABELS.get(spell_ability, spell_ability.upper())
+                self.query_one("#spell-stats", Static).update(
+                    f"[bold]Spellcasting[/]  Ability: {label}  |  Spell Save DC: {dc}  |  Spell Attack: {shm.format_modifier(atk)}"
+                )
+        except Exception:
+            pass
 
     # -- actions ----------------------------------------------------------
 

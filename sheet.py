@@ -138,16 +138,18 @@ def normalize_sheet(raw: dict | None) -> dict:
     return sheet
 
 
-def spell_save_dc(sheet: dict) -> int:
+def spell_save_dc(sheet: dict, entity_type: str = "adventurer") -> int:
+    pb = proficiency_bonus(entity_type, sheet)
     ability = sheet.get("spellcasting_ability") or "int"
     mod = ability_modifier(sheet.get("abilities", {}).get(ability, 10))
-    return 8 + sheet.get("proficiency_bonus", 2) + mod
+    return 8 + pb + mod
 
 
-def spell_attack_bonus(sheet: dict) -> int:
+def spell_attack_bonus(sheet: dict, entity_type: str = "adventurer") -> int:
+    pb = proficiency_bonus(entity_type, sheet)
     ability = sheet.get("spellcasting_ability") or "int"
     mod = ability_modifier(sheet.get("abilities", {}).get(ability, 10))
-    return sheet.get("proficiency_bonus", 2) + mod
+    return pb + mod
 
 
 def ability_modifier(score) -> int:

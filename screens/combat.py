@@ -370,14 +370,10 @@ class CombatTrackerScreen(DismissableScreen):
     # -- attack/damage rolling --------------------------------------------
 
     def _spell_save_dc_for(self, entity: dict, sheet: dict) -> int:
-        pb = shm.proficiency_bonus(entity["type"], sheet)
-        ability = sheet.get("spellcasting_ability") or "int"
-        return 8 + pb + shm.ability_modifier(sheet["abilities"].get(ability, 10))
+        return shm.spell_save_dc(sheet, entity["type"])
 
     def _spell_attack_bonus_for(self, entity: dict, sheet: dict) -> int:
-        pb = shm.proficiency_bonus(entity["type"], sheet)
-        ability = sheet.get("spellcasting_ability") or "int"
-        return pb + shm.ability_modifier(sheet["abilities"].get(ability, 10))
+        return shm.spell_attack_bonus(sheet, entity["type"])
 
     def _attack_options_for(self, entity_id: int):
         entity = db.get_entity(entity_id)
