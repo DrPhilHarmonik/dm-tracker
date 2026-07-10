@@ -86,6 +86,7 @@ class BackupScreen(DismissableScreen):
                 Horizontal(
                     Button("Restore (into empty DB)", id="btn-restore", variant="primary"),
                     Button("Restore & Replace All Data", id="btn-restore-replace", variant="error"),
+                    id="restore-actions",
                 ),
                 Static("", id="restore-status"),
                 Static("Import Markdown Vault", id="vault-import-title"),
@@ -94,6 +95,7 @@ class BackupScreen(DismissableScreen):
                 Horizontal(
                     Button("Import (into empty DB)", id="btn-vault-import", variant="primary"),
                     Button("Import & Replace All Data", id="btn-vault-import-replace", variant="error"),
+                    id="vault-import-actions",
                 ),
                 Static("", id="vault-import-status"),
                 Static("Import D&D Beyond Character", id="ddb-import-title"),

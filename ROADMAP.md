@@ -664,8 +664,11 @@ change, no new screen. The HP formula and proficiency bake-in follow the
 same pattern Phase 12 established; the main lift is expanding `classes.py`
 and wiring the spellcasting_ability field so Phase 11 can read it.
 
-**Status:** Scoped, not started. Should land before Phase 11 since Phase 11
-depends on spellcasting_ability being present per class.
+**Status: Done** (landed silently alongside Phase 12). `classes.py` already
+holds `CLASS_SPELLCASTING_ABILITY`, `CLASS_PRIMARY_ABILITY`,
+`CLASS_PROFICIENCIES`, and `suggested_hp()`. The wizard's abilities step
+shows the primary/spellcasting hint; save is baked from `CLASS_SAVING_THROWS`;
+proficiencies bake into `sheet["proficiencies"]` on wizard save.
 
 ---
 

@@ -450,6 +450,11 @@ QuickCaptureModal {
     width: 1fr;
 }
 
+#restore-actions, #vault-import-actions {
+    height: auto;
+    align: left middle;
+}
+
 #backup-status, #restore-status, #vault-import-status {
     margin: 1 0;
 }
