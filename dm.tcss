@@ -861,3 +861,81 @@ QuickCaptureModal {
 #wizard-nav Button {
     min-width: 18;
 }
+
+/* ── Spells tab ────────────────────────────────────────────────────── */
+
+#spell-stats {
+    background: #0f3460;
+    color: #e2e8f0;
+    padding: 0 2;
+    margin-bottom: 1;
+}
+
+.slot-row {
+    height: 1;
+    align: left middle;
+    margin-bottom: 0;
+}
+
+.slot-label {
+    width: 6;
+    color: #a0b3c8;
+}
+
+.slot-input {
+    width: 6;
+    height: 1;
+    border: none;
+    padding: 0 1;
+    background: #1e2a3a;
+}
+
+.slot-sep {
+    width: 3;
+    text-align: center;
+    color: #566c7f;
+}
+
+#spell-form-row1, #spell-form-row2 {
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+}
+
+#spell-name {
+    width: 1fr;
+}
+
+#spell-level {
+    width: 16;
+}
+
+#spell-action-cost {
+    width: 20;
+}
+
+#spell-save-or-attack {
+    width: 18;
+}
+
+#spell-save-ability {
+    width: 18;
+}
+
+#spell-description {
+    width: 1fr;
+}
+
+#spell-actions {
+    height: auto;
+    align: left middle;
+    margin: 1 0;
+}
+
+#list-spells {
+    height: auto;
+    min-height: 4;
+    max-height: 14;
+    background: #16213e;
+    border: solid #0f3460;
+}

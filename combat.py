@@ -30,6 +30,11 @@ def normalize_combat(raw: dict | None) -> dict:
                 "successes": max(0, min(3, int((c.get("death_saves") or {}).get("successes") or 0))),
                 "failures": max(0, min(3, int((c.get("death_saves") or {}).get("failures") or 0))),
             },
+            "actions_used": {
+                "action": bool((c.get("actions_used") or {}).get("action", False)),
+                "bonus_action": bool((c.get("actions_used") or {}).get("bonus_action", False)),
+                "reaction": bool((c.get("actions_used") or {}).get("reaction", False)),
+            },
         }
         for c in (raw.get("combatants") or [])
     ]
@@ -45,6 +50,7 @@ def add_combatant(combat: dict, entity_id: int) -> dict:
         "initiative": 0,
         "conditions": [],
         "death_saves": {"successes": 0, "failures": 0},
+        "actions_used": {"action": False, "bonus_action": False, "reaction": False},
     })
     return combat
 
@@ -87,6 +93,24 @@ def current_combatant(combat: dict) -> dict | None:
     return combat["combatants"][combat["turn_index"] % len(combat["combatants"])]
 
 
+def mark_action_used(combat: dict, entity_id: int, action_type: str) -> dict:
+    """Mark an action slot used for entity this turn. action_type: action/bonus_action/reaction."""
+    combat = normalize_combat(combat)
+    for c in combat["combatants"]:
+        if c["entity_id"] == entity_id and action_type in c["actions_used"]:
+            c["actions_used"][action_type] = True
+    return combat
+
+
+def reset_actions(combat: dict, entity_id: int) -> dict:
+    """Clear all action slots for a combatant (called at turn start)."""
+    combat = normalize_combat(combat)
+    for c in combat["combatants"]:
+        if c["entity_id"] == entity_id:
+            c["actions_used"] = {"action": False, "bonus_action": False, "reaction": False}
+    return combat
+
+
 def next_turn(combat: dict) -> dict:
     combat = normalize_combat(combat)
     if not combat["combatants"]:
@@ -96,6 +120,10 @@ def next_turn(combat: dict) -> dict:
         combat["turn_index"] = 0
         combat["round"] += 1
         _tick_conditions(combat)
+    # Reset actions for the combatant whose turn is starting
+    if combat["started"] and combat["combatants"]:
+        idx = combat["turn_index"] % len(combat["combatants"])
+        reset_actions(combat, combat["combatants"][idx]["entity_id"])
     return combat
 
 

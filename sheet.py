@@ -82,6 +82,8 @@ def default_sheet() -> dict:
         "senses": "",
         "languages": "",
         "attacks": [],
+        "spells": [],
+        "spell_slots": {str(lvl): {"current": 0, "max": 0} for lvl in range(1, 10)},
         "resistances": "",
         "immunities": "",
         "vulnerabilities": "",
@@ -104,9 +106,48 @@ def normalize_sheet(raw: dict | None) -> dict:
 
     sheet["saving_throw_proficiencies"] = list(raw.get("saving_throw_proficiencies") or [])
     sheet["skill_proficiencies"] = dict(raw.get("skill_proficiencies") or {})
-    sheet["attacks"] = list(raw.get("attacks") or [])
+    sheet["attacks"] = [
+        {
+            "name": str(a.get("name", "")),
+            "bonus": str(a.get("bonus", "+0")),
+            "damage": str(a.get("damage", "")),
+            "action_cost": str(a.get("action_cost", "action")),
+        }
+        for a in (raw.get("attacks") or [])
+    ]
+    sheet["spells"] = [
+        {
+            "name": str(s.get("name", "")),
+            "level": max(0, min(9, int(s.get("level") or 0))),
+            "action_cost": str(s.get("action_cost", "action")),
+            "save_or_attack": str(s.get("save_or_attack", "none")),
+            "save_ability": str(s.get("save_ability", "")),
+            "description": str(s.get("description", "")),
+        }
+        for s in (raw.get("spells") or [])
+    ]
+    raw_slots = raw.get("spell_slots") or {}
+    sheet["spell_slots"] = {
+        str(lvl): {
+            "current": max(0, int((raw_slots.get(str(lvl)) or {}).get("current", 0))),
+            "max": max(0, int((raw_slots.get(str(lvl)) or {}).get("max", 0))),
+        }
+        for lvl in range(1, 10)
+    }
     sheet["special_abilities"] = list(raw.get("special_abilities") or [])
     return sheet
+
+
+def spell_save_dc(sheet: dict) -> int:
+    ability = sheet.get("spellcasting_ability") or "int"
+    mod = ability_modifier(sheet.get("abilities", {}).get(ability, 10))
+    return 8 + sheet.get("proficiency_bonus", 2) + mod
+
+
+def spell_attack_bonus(sheet: dict) -> int:
+    ability = sheet.get("spellcasting_ability") or "int"
+    mod = ability_modifier(sheet.get("abilities", {}).get(ability, 10))
+    return sheet.get("proficiency_bonus", 2) + mod
 
 
 def ability_modifier(score) -> int:

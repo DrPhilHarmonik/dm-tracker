@@ -35,6 +35,7 @@ class CharacterSheetScreen(Screen):
         self.sheet = shm.normalize_sheet(entity["fields"].get("sheet", {}))
         self.pending_attacks: list[dict] = list(self.sheet["attacks"])
         self.pending_specials: list[dict] = list(self.sheet["special_abilities"])
+        self.pending_spells: list[dict] = list(self.sheet["spells"])
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -47,6 +48,8 @@ class CharacterSheetScreen(Screen):
                 yield ScrollableContainer(Container(id="skills-fields"), id="skills-scroll")
             with TabPane("Attacks & Traits", id="tab-attacks"):
                 yield ScrollableContainer(Container(id="attacks-fields"), id="attacks-scroll")
+            with TabPane("Spells", id="tab-spells"):
+                yield ScrollableContainer(Container(id="spells-fields"), id="spells-scroll")
         yield Horizontal(
             Button("Recalculate", id="btn-recalc", variant="primary"),
             Button("Save (Ctrl+S)", id="btn-save", variant="success"),
@@ -63,6 +66,7 @@ class CharacterSheetScreen(Screen):
         await self._build_combat_tab()
         await self._build_skills_tab()
         await self._build_attacks_tab()
+        await self._build_spells_tab()
         self._refresh_computed_displays()
 
     # -- tab builders --------------------------------------------------
@@ -166,6 +170,79 @@ class CharacterSheetScreen(Screen):
         self._refresh_attacks_list()
         self._refresh_specials_list()
 
+    async def _build_spells_tab(self):
+        container = self.query_one("#spells-fields")
+        pb = shm.proficiency_bonus(self.entity_type, self.sheet)
+        spell_ability = self.sheet.get("spellcasting_ability") or ""
+
+        header_widgets = []
+        if spell_ability:
+            dc = 8 + pb + shm.ability_modifier(self.sheet["abilities"].get(spell_ability, 10))
+            atk = pb + shm.ability_modifier(self.sheet["abilities"].get(spell_ability, 10))
+            label = shm.ABILITY_LABELS.get(spell_ability, spell_ability.upper())
+            header_widgets.append(Static(
+                f"[bold]Spellcasting[/]  Ability: {label}  |  Spell Save DC: {dc}  |  Spell Attack: {shm.format_modifier(atk)}",
+                id="spell-stats",
+            ))
+
+        slot_rows = [Static("[bold]Spell Slots  (current / max)[/]")]
+        for lvl in range(1, 10):
+            slot = self.sheet["spell_slots"][str(lvl)]
+            slot_rows.append(
+                Horizontal(
+                    Label(f"Lv {lvl}", classes="slot-label"),
+                    Input(value=str(slot["current"]), id=f"slot-current-{lvl}", classes="slot-input"),
+                    Label("/", classes="slot-sep"),
+                    Input(value=str(slot["max"]), id=f"slot-max-{lvl}", classes="slot-input"),
+                    classes="slot-row",
+                )
+            )
+
+        spell_form = [
+            Static("[bold]Spells[/]"),
+            Horizontal(
+                Input(placeholder="Spell name", id="spell-name"),
+                Select(
+                    [("Cantrip", "0")] + [(f"Level {i}", str(i)) for i in range(1, 10)],
+                    value="0",
+                    id="spell-level",
+                    allow_blank=False,
+                ),
+                Select(
+                    [("Action", "action"), ("Bonus Action", "bonus_action"),
+                     ("Reaction", "reaction"), ("Free", "free")],
+                    value="action",
+                    id="spell-action-cost",
+                    allow_blank=False,
+                ),
+                id="spell-form-row1",
+            ),
+            Horizontal(
+                Select(
+                    [("None", "none"), ("Save", "save"), ("Attack", "attack")],
+                    value="none",
+                    id="spell-save-or-attack",
+                    allow_blank=False,
+                ),
+                Select(
+                    [("--", "")] + [(shm.ABILITY_LABELS[a], a) for a in shm.ABILITIES],
+                    value="",
+                    id="spell-save-ability",
+                    allow_blank=True,
+                ),
+                Input(placeholder="Description (optional)", id="spell-description"),
+                id="spell-form-row2",
+            ),
+            Horizontal(
+                Button("+ Add Spell", id="btn-add-spell"),
+                Button("Remove Selected", id="btn-remove-spell"),
+                id="spell-actions",
+            ),
+            ListView(id="list-spells"),
+        ]
+        await container.mount(*header_widgets, *slot_rows, *spell_form)
+        self._refresh_spells_list()
+
     # -- pending attack/special list management ------------------------
 
     def _refresh_attacks_list(self):
@@ -220,6 +297,44 @@ class CharacterSheetScreen(Screen):
             del self.pending_specials[lv.index]
             self._refresh_specials_list()
 
+    def _refresh_spells_list(self):
+        lv = self.query_one("#list-spells", ListView)
+        lv.clear()
+        for sp in self.pending_spells:
+            lvl_label = "Cantrip" if sp["level"] == 0 else f"L{sp['level']}"
+            cost = sp.get("action_cost", "action").replace("_", " ")
+            sor = sp.get("save_or_attack", "none")
+            sor_label = f" [bold cyan]({sor})[/bold cyan]" if sor != "none" else ""
+            lv.append(ListItem(Label(f"{sp['name']} ({lvl_label}, {cost}{sor_label})")))
+
+    def _add_spell(self):
+        name = self.query_one("#spell-name", Input).value.strip()
+        if not name:
+            return
+        level = int(str(self.query_one("#spell-level", Select).value))
+        action_cost = str(self.query_one("#spell-action-cost", Select).value)
+        save_or_attack = str(self.query_one("#spell-save-or-attack", Select).value)
+        raw_save_ability = self.query_one("#spell-save-ability", Select).value
+        save_ability = "" if raw_save_ability is Select.BLANK else str(raw_save_ability)
+        description = self.query_one("#spell-description", Input).value.strip()
+        self.pending_spells.append({
+            "name": name,
+            "level": level,
+            "action_cost": action_cost,
+            "save_or_attack": save_or_attack,
+            "save_ability": save_ability,
+            "description": description,
+        })
+        self.query_one("#spell-name", Input).value = ""
+        self.query_one("#spell-description", Input).value = ""
+        self._refresh_spells_list()
+
+    def _remove_spell(self):
+        lv = self.query_one("#list-spells", ListView)
+        if lv.index is not None and lv.index < len(self.pending_spells):
+            del self.pending_spells[lv.index]
+            self._refresh_spells_list()
+
     # -- collecting + computed display ----------------------------------
 
     def _to_int(self, widget_id: str, default: int = 0) -> int:
@@ -242,7 +357,21 @@ class CharacterSheetScreen(Screen):
             if value != "none":
                 skill_proficiencies[s] = value
 
-        sheet = {
+        spell_slots = {}
+        for lvl in range(1, 10):
+            try:
+                cur_raw = self.query_one(f"#slot-current-{lvl}", Input).value.strip()
+                max_raw = self.query_one(f"#slot-max-{lvl}", Input).value.strip()
+                cur = max(0, int(cur_raw)) if cur_raw else 0
+                mx = max(0, int(max_raw)) if max_raw else 0
+            except Exception:
+                cur, mx = 0, 0
+            spell_slots[str(lvl)] = {"current": cur, "max": mx}
+
+        # Start from the existing sheet so fields not editable here
+        # (spellcasting_ability, proficiencies, etc.) are preserved.
+        sheet = dict(self.sheet)
+        sheet.update({
             "abilities": abilities,
             "ac": self._to_int("sheet-ac", 10),
             "hp_max": self._to_int("sheet-hp-max", 10),
@@ -259,15 +388,14 @@ class CharacterSheetScreen(Screen):
             "vulnerabilities": self._to_text("sheet-vulnerabilities"),
             "attacks": list(self.pending_attacks),
             "special_abilities": list(self.pending_specials),
-        }
+            "spells": list(self.pending_spells),
+            "spell_slots": spell_slots,
+        })
         if self.entity_type == "enemy":
             sheet["cr"] = self._to_text("sheet-cr")
             sheet["creature_type"] = self._to_text("sheet-creature-type")
-            sheet["level"] = self.sheet.get("level", 1)
         else:
             sheet["level"] = self._to_int("sheet-level", 1)
-            sheet["cr"] = self.sheet.get("cr", "0")
-            sheet["creature_type"] = self.sheet.get("creature_type", "")
         return sheet
 
     def _refresh_computed_displays(self):
@@ -322,3 +450,7 @@ class CharacterSheetScreen(Screen):
             self._add_special()
         elif event.button.id == "btn-remove-special":
             self._remove_special()
+        elif event.button.id == "btn-add-spell":
+            self._add_spell()
+        elif event.button.id == "btn-remove-spell":
+            self._remove_spell()

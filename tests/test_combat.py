@@ -134,5 +134,5 @@ def test_normalize_combat_fills_defaults_for_missing_data():
 
     partial = combat.normalize_combat({"combatants": [{"entity_id": "7"}]})
     assert partial["combatants"] == [
-        {"entity_id": 7, "initiative": 0, "conditions": [], "death_saves": {"successes": 0, "failures": 0}}
+        {"entity_id": 7, "initiative": 0, "conditions": [], "death_saves": {"successes": 0, "failures": 0}, "actions_used": {"action": False, "bonus_action": False, "reaction": False}}
     ]
