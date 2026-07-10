@@ -19,6 +19,7 @@ import classes
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
 from screens.common import DismissableScreen, PALETTE, tint_border
+from screens.wizard import WizardScreen
 
 class CombatTrackerScreen(DismissableScreen):
     BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
@@ -82,7 +83,8 @@ class CombatTrackerScreen(DismissableScreen):
 
     def _refresh_combatant_selects(self):
         options = self._combatant_options()
-        for select_id in ("#sel-initiative-target", "#sel-remove-combatant", "#sel-hp-target", "#sel-attack-attacker"):
+        for select_id in ("#sel-initiative-target", "#sel-remove-combatant", "#sel-hp-target",
+                          "#sel-attack-attacker", "#sel-summon-caster"):
             self._set_options_preserving_selection(self.query_one(select_id, Select), options)
         self._set_options_preserving_selection(self.query_one("#sel-add-combatant", Select), self._available_entity_options())
         self._refresh_attack_choices()
@@ -173,6 +175,10 @@ class CombatTrackerScreen(DismissableScreen):
                 id="turn-advance-actions",
             ),
             Button("End Encounter", id="btn-end-encounter", variant="error"),
+            Static("[bold]Summon Creature[/]", id="summon-heading"),
+            Label("Summoner"),
+            Select(self._combatant_options(), id="sel-summon-caster", prompt="Choose summoner..."),
+            Button("Open Summon Wizard", id="btn-summon", variant="warning"),
         )
 
     # -- persistence + summary --------------------------------------------
@@ -717,3 +723,29 @@ class CombatTrackerScreen(DismissableScreen):
             self._add_death_save(success=True)
         elif bid == "btn-ds-failure":
             self._add_death_save(success=False)
+        elif bid == "btn-summon":
+            self._summon_creature()
+
+    def _summon_creature(self):
+        sel = self.query_one("#sel-summon-caster", Select)
+        if sel.value is Select.NULL:
+            return
+        summoner_id = int(str(sel.value))
+        summoner = db.get_entity(summoner_id)
+        if not summoner:
+            return
+        self._pending_summoner_id = summoner_id
+        self.app.push_screen(
+            WizardScreen("enemy", "quick", prefill={"name": "Summoned Creature"}),
+            callback=self._on_summon_created,
+        )
+
+    def _on_summon_created(self, entity_id: int | None):
+        if not entity_id:
+            return
+        db.create_relationship(entity_id, self._pending_summoner_id, "summoned by", "")
+        self.combat = cbt.add_combatant(self.combat, entity_id)
+        self._persist()
+        summoner = db.get_entity(self._pending_summoner_id)
+        summoner_name = summoner["name"] if summoner else "summoner"
+        self.app.notify(f"Summoned creature added to encounter (linked to {summoner_name})")
