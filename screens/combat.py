@@ -287,9 +287,13 @@ class CombatTrackerScreen(DismissableScreen):
                 f"{cd['name']}({cd['rounds_remaining'] if cd['rounds_remaining'] is not None else chr(0x221e)})"
                 for cd in c["conditions"]
             ) or "none"
+            au = c.get("actions_used", {})
+            used = [slot for slot, flag in (("A", "action"), ("BA", "bonus_action"), ("R", "reaction")) if au.get(flag)]
+            used_str = f"  [dim](used: {', '.join(used)})[/]" if used else ""
             lines.append(
                 f"{marker}[bold {color}]{entity['name']}[/] - Init {c['initiative']} - "
-                f"HP {sheet_data['hp_current']}/{sheet_data['hp_max']} - AC {sheet_data['ac']} - Conditions: {cond_str}"
+                f"HP {sheet_data['hp_current']}/{sheet_data['hp_max']} - AC {sheet_data['ac']} - "
+                f"Conditions: {cond_str}{used_str}"
             )
         if not self.combat["combatants"]:
             lines.append("[dim]No combatants yet. Add some on the Combatants tab.[/dim]")
@@ -365,15 +369,38 @@ class CombatTrackerScreen(DismissableScreen):
 
     # -- attack/damage rolling --------------------------------------------
 
+    def _spell_save_dc_for(self, entity: dict, sheet: dict) -> int:
+        pb = shm.proficiency_bonus(entity["type"], sheet)
+        ability = sheet.get("spellcasting_ability") or "int"
+        return 8 + pb + shm.ability_modifier(sheet["abilities"].get(ability, 10))
+
+    def _spell_attack_bonus_for(self, entity: dict, sheet: dict) -> int:
+        pb = shm.proficiency_bonus(entity["type"], sheet)
+        ability = sheet.get("spellcasting_ability") or "int"
+        return pb + shm.ability_modifier(sheet["abilities"].get(ability, 10))
+
     def _attack_options_for(self, entity_id: int):
         entity = db.get_entity(entity_id)
         if not entity:
             return []
         sheet_data = self._effective_sheet(entity)
-        return [
-            (f"{atk.get('name', '?')} ({shm.format_modifier(int(atk.get('bonus', 0) or 0))})", str(i))
-            for i, atk in enumerate(sheet_data["attacks"])
-        ]
+        options = []
+        for i, atk in enumerate(sheet_data["attacks"]):
+            bonus = int(atk.get("bonus", 0) or 0)
+            options.append((f"[W] {atk.get('name', '?')} ({shm.format_modifier(bonus)})", f"w:{i}"))
+        for i, sp in enumerate(sheet_data["spells"]):
+            lvl_label = "Cantrip" if sp["level"] == 0 else f"L{sp['level']}"
+            sor = sp.get("save_or_attack", "none")
+            if sor == "attack":
+                bonus = self._spell_attack_bonus_for(entity, sheet_data)
+                extra = shm.format_modifier(bonus)
+            elif sor == "save":
+                dc = self._spell_save_dc_for(entity, sheet_data)
+                extra = f"DC {dc}"
+            else:
+                extra = "no roll"
+            options.append((f"[S] {sp['name']} ({lvl_label}, {extra})", f"s:{i}"))
+        return options
 
     def _refresh_attack_choices(self):
         attacker_sel = self.query_one("#sel-attack-attacker", Select)
@@ -394,6 +421,7 @@ class CombatTrackerScreen(DismissableScreen):
         self._refresh_attack_choices()
 
     def _selected_attack(self):
+        """Return (attacker_entity, action_dict) where action_dict has a '_type' key of 'weapon' or 'spell'."""
         attacker_sel = self.query_one("#sel-attack-attacker", Select)
         attack_sel = self.query_one("#sel-attack-choice", Select)
         if attacker_sel.value is Select.NULL or attack_sel.value is Select.NULL:
@@ -402,21 +430,86 @@ class CombatTrackerScreen(DismissableScreen):
         if not attacker_entity:
             return None, None
         sheet_data = self._effective_sheet(attacker_entity)
-        index = int(str(attack_sel.value))
-        if index >= len(sheet_data["attacks"]):
-            return None, None
-        return attacker_entity, sheet_data["attacks"][index]
+        value = str(attack_sel.value)
+        if value.startswith("s:"):
+            index = int(value[2:])
+            if index >= len(sheet_data["spells"]):
+                return None, None
+            return attacker_entity, {**sheet_data["spells"][index], "_type": "spell"}
+        else:
+            index = int(value[2:]) if value.startswith("w:") else int(value)
+            if index >= len(sheet_data["attacks"]):
+                return None, None
+            return attacker_entity, {**sheet_data["attacks"][index], "_type": "weapon"}
+
+    def _mark_attack_action_used(self, entity_id: int, action: dict):
+        cost = action.get("action_cost", "action")
+        if cost in ("action", "bonus_action", "reaction"):
+            self.combat = cbt.mark_action_used(self.combat, entity_id, cost)
+            self._persist()
+
+    def _decrement_spell_slot(self, entity_id: int, level: int):
+        if level == 0:
+            return
+        entity = db.get_entity(entity_id)
+        if not entity:
+            return
+        sheet_data = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        slot = sheet_data["spell_slots"].get(str(level), {"current": 0, "max": 0})
+        remaining = slot["current"]
+        if remaining > 0:
+            sheet_data["spell_slots"][str(level)]["current"] = remaining - 1
+            fields = dict(entity["fields"])
+            fields["sheet"] = sheet_data
+            db.update_entity(entity_id, entity["name"], fields, entity["notes"])
+            self.app.notify(f"Level {level} slot used -- {remaining - 1}/{slot['max']} remaining")
+        else:
+            self.app.notify(f"No level {level} slots remaining!", severity="warning")
 
     def _roll_attack_to_hit(self):
-        attacker_entity, attack = self._selected_attack()
-        if not attack:
+        attacker_entity, action = self._selected_attack()
+        if not action:
             return
-        self._last_attack = attack
+        self._last_attack = action
+        sheet_data = self._effective_sheet(attacker_entity)
+
+        if action.get("_type") == "spell":
+            sor = action.get("save_or_attack", "none")
+            if sor == "save":
+                dc = self._spell_save_dc_for(attacker_entity, sheet_data)
+                save_ability = action.get("save_ability", "")
+                ability_label = shm.ABILITY_LABELS.get(save_ability, save_ability.upper()) if save_ability else "?"
+                self.query_one("#attack-roll-result", Static).update(
+                    f"{attacker_entity['name']} casts {action['name']} -- {ability_label} Save DC {dc}"
+                )
+            elif sor == "attack":
+                bonus = self._spell_attack_bonus_for(attacker_entity, sheet_data)
+                adv = self.query_one("#attack-adv", Switch).value
+                dis = self.query_one("#attack-dis", Switch).value
+                result = dice.roll_attack({"bonus": str(bonus), "name": action["name"]}, advantage=adv, disadvantage=dis)
+                text = f"{attacker_entity['name']} - {action['name']} spell attack: {result.detail}"
+                target_sel = self.query_one("#sel-hp-target", Select)
+                if target_sel.value is not Select.NULL:
+                    target_entity = db.get_entity(int(str(target_sel.value)))
+                    if target_entity:
+                        target_ac = self._effective_sheet(target_entity)["ac"]
+                        hit = result.total >= target_ac
+                        tag = "[bold green]HIT[/]" if hit else "[bold red]MISS[/]"
+                        text += f"  ->  {tag} (AC {target_ac})"
+                self.query_one("#attack-roll-result", Static).update(text)
+            else:
+                self.query_one("#attack-roll-result", Static).update(
+                    f"{attacker_entity['name']} uses {action['name']} (automatic / no roll)"
+                )
+            self._mark_attack_action_used(attacker_entity["id"], action)
+            if action.get("level", 0) > 0:
+                self._decrement_spell_slot(attacker_entity["id"], action["level"])
+            return
+
         adv = self.query_one("#attack-adv", Switch).value
         dis = self.query_one("#attack-dis", Switch).value
-        result = dice.roll_attack(attack, advantage=adv, disadvantage=dis)
-
-        text = f"{attacker_entity['name']} - {attack.get('name', '?')} to-hit: {result.detail}"
+        result = dice.roll_attack(action, advantage=adv, disadvantage=dis)
+        text = f"{attacker_entity['name']} - {action.get('name', '?')} to-hit: {result.detail}"
         target_sel = self.query_one("#sel-hp-target", Select)
         if target_sel.value is not Select.NULL:
             target_entity = db.get_entity(int(str(target_sel.value)))
@@ -426,13 +519,20 @@ class CombatTrackerScreen(DismissableScreen):
                 tag = "[bold green]HIT[/]" if hit else "[bold red]MISS[/]"
                 text += f"  ->  {tag} (AC {target_ac})"
         self.query_one("#attack-roll-result", Static).update(text)
+        self._mark_attack_action_used(attacker_entity["id"], action)
 
     def _roll_attack_damage(self):
-        attack = getattr(self, "_last_attack", None)
-        if not attack:
+        action = getattr(self, "_last_attack", None)
+        if not action:
             return
-        result = dice.roll_damage(attack)
-        self.query_one("#attack-roll-result", Static).update(f"{attack.get('name', '?')} damage: {result.detail}")
+        if action.get("_type") == "spell":
+            desc = action.get("description", "")
+            self.query_one("#attack-roll-result", Static).update(
+                f"{action['name']}: {desc}" if desc else f"{action['name']}: see spell description for effect"
+            )
+            return
+        result = dice.roll_damage(action)
+        self.query_one("#attack-roll-result", Static).update(f"{action.get('name', '?')} damage: {result.detail}")
         self.query_one("#input-hp-amount", Input).value = str(result.total)
 
     @on(Select.Changed, "#sel-condition-name")

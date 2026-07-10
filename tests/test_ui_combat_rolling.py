@@ -80,7 +80,7 @@ def test_attacker_defaults_to_current_turn_and_first_attack_auto_selects(monkeyp
             await pilot.pause()
 
             assert cs.query_one("#sel-attack-attacker").value == str(pc_id)
-            assert cs.query_one("#sel-attack-choice").value == "0"
+            assert cs.query_one("#sel-attack-choice").value == "w:0"
 
     run(scenario)
 
@@ -182,6 +182,6 @@ def test_next_turn_switches_attacker_and_their_attack_choice(monkeypatch, tmp_pa
             cs.query_one("#btn-next-turn").press()
             await pilot.pause()
             assert cs.query_one("#sel-attack-attacker").value == str(enemy_id)
-            assert cs.query_one("#sel-attack-choice").value == "0"  # Goblin's Scimitar, auto-selected
+            assert cs.query_one("#sel-attack-choice").value == "w:0"  # Goblin's Scimitar, auto-selected
 
     run(scenario)
