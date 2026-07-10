@@ -523,8 +523,7 @@ economy and spellcasting are tightly coupled (both ride on `action_cost`)
 so they're cheaper together than the points would suggest in isolation,
 which is offset by summons needing its own entity-creation flow end to end.
 
-**Status:** Scoped, not started. Next up after Phase 10 (Session Workflow),
-unless reprioritized.
+**Status: Done** (Summons deferred to Phase 11b as its own entity-creation flow). Data layer: `sheet.py` gained `spells` list + `spell_slots` (levels 1-9) schema in `default_sheet()`/`normalize_sheet()`, plus `spell_save_dc()` and `spell_attack_bonus()` helpers; `attacks` entries gained `action_cost` field. `combat.py` gained `actions_used` dict per combatant, `mark_action_used()`, `reset_actions()` (called by `next_turn()`). `models.py` gained "summoned by" relationship type. UI: 5th "Spells" tab on the character sheet -- compact slot grid (levels 1-9 as borderless single-row inputs), spellcasting stat bar (DC + attack bonus auto-computed from spellcasting_ability), add/remove spell form with Level/Action Cost/Save-or-Attack Selects, spell ListView with cyan `(save)/(attack)` tags. Combat tracker: weapon/spell options now prefixed `[W]`/`[S]` in the attack Select; spell saves display DC + save ability; spell attacks roll proficiency+ability vs target AC; any weapon or spell use auto-marks the action slot; level-1+ spells decrement the caster's slot and notify with remaining count; summary shows `(used: A, BA)` dim tag per combatant. 248/248 tests passing.
 
 ### Phase 12 — Defined Races with Integrated Stat Bonuses
 
