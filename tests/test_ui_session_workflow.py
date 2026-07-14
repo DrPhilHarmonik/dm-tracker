@@ -68,7 +68,9 @@ def test_pc_sheet_button_opens_character_sheet(monkeypatch, tmp_path):
             wf.query_one("#wf-pcs").move_cursor(row=0)
             await pilot.pause()
             wf.query_one("#btn-wf-pc-sheet").press()
-            await pilot.pause()
+            # CharacterSheetScreen.on_mount does 5 async tab-builds; give it time
+            for _ in range(8):
+                await pilot.pause()
 
             from screens.sheet import CharacterSheetScreen
             assert isinstance(app.screen, CharacterSheetScreen)

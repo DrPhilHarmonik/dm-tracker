@@ -939,3 +939,64 @@ QuickCaptureModal {
     background: #16213e;
     border: solid #0f3460;
 }
+
+/* ── Rest screen ───────────────────────────────────────────────────── */
+
+.rest-section-heading {
+    color: #c3e88d;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+.rest-desc {
+    color: #566c7f;
+    margin-bottom: 1;
+}
+
+.rest-result {
+    margin-left: 2;
+}
+
+.rest-pc-block {
+    height: auto;
+    background: #16213e;
+    border: solid #0f3460;
+    padding: 0 1;
+    margin-bottom: 1;
+}
+
+.rest-pc-header {
+    height: auto;
+    align: left middle;
+    margin-bottom: 0;
+}
+
+.rest-pc-name {
+    width: 22;
+}
+
+.rest-pc-stats {
+    color: #a0b3c8;
+}
+
+.rest-slots {
+    color: #82aaff;
+    margin-bottom: 0;
+}
+
+.rest-dice-input {
+    width: 6;
+    height: 1;
+    border: none;
+    padding: 0 1;
+    background: #1e2a3a;
+}
+
+#short-rest-roster {
+    height: auto;
+}
+
+#short-rest-roster Horizontal {
+    height: auto;
+    align: left middle;
+}
