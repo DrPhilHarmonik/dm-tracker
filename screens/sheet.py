@@ -33,6 +33,7 @@ class CharacterSheetScreen(Screen):
         entity = db.get_entity(entity_id)
         self.entity_type = entity["type"]
         self.sheet = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        self._inspiration = bool(entity["fields"].get("inspiration", False))
         self.pending_attacks: list[dict] = list(self.sheet["attacks"])
         self.pending_specials: list[dict] = list(self.sheet["special_abilities"])
         self.pending_spells: list[dict] = list(self.sheet["spells"])
@@ -106,6 +107,11 @@ class CharacterSheetScreen(Screen):
             Label("Languages"), Input(value=self.sheet["languages"], placeholder="e.g. Common, Elvish", id="sheet-languages"),
             Label("Proficiency Bonus (computed)"), Static("+2", id="sheet-prof-bonus"),
         ]
+        if self.entity_type != "enemy":
+            widgets += [
+                Label("Inspiration"),
+                Switch(value=self._inspiration, id="sheet-inspiration"),
+            ]
         await container.mount(*widgets)
 
     async def _build_skills_tab(self):
@@ -441,6 +447,10 @@ class CharacterSheetScreen(Screen):
             fields["creature_type"] = sheet["creature_type"]
         else:
             fields["level"] = str(sheet["level"])
+            try:
+                fields["inspiration"] = self.query_one("#sheet-inspiration", Switch).value
+            except Exception:
+                pass
         db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
         self.dismiss(True)
 

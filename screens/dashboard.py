@@ -22,6 +22,7 @@ from screens.backup import ExportScreen, BackupScreen
 from screens.campaigns import CampaignSwitcherScreen
 from screens.rest import RestScreen
 from screens.party_overview import PartyOverviewScreen
+from screens.award_xp import AwardXPScreen
 from screens.common import DismissableScreen, PALETTE
 
 class Dashboard(Screen):
@@ -41,6 +42,7 @@ class Dashboard(Screen):
         Binding("ctrl+w", "campaigns", "Campaigns"),
         Binding("r", "rest", "Party Rest"),
         Binding("p", "party_overview", "Party Overview"),
+        Binding("ctrl+x", "award_xp", "Award XP"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -52,6 +54,7 @@ class Dashboard(Screen):
                 Button("Switch Campaign", id="btn-campaigns", variant="default"),
                 Button("Party Rest", id="btn-rest", variant="warning"),
                 Button("Party Overview", id="btn-party", variant="primary"),
+                Button("Award XP", id="btn-xp", variant="warning"),
                 Button("Export to Markdown", id="btn-export", variant="success"),
                 Button("Search All", id="btn-search", variant="primary"),
                 Button("Backup / Restore", id="btn-backup", variant="default"),
@@ -107,6 +110,8 @@ class Dashboard(Screen):
             self.action_rest()
         elif btn_id == "btn-party":
             self.action_party_overview()
+        elif btn_id == "btn-xp":
+            self.action_award_xp()
         elif btn_id == "btn-backup":
             self.action_backup()
 
@@ -124,6 +129,9 @@ class Dashboard(Screen):
 
     def action_party_overview(self):
         self.app.push_screen(PartyOverviewScreen())
+
+    def action_award_xp(self):
+        self.app.push_screen(AwardXPScreen())
 
     def action_backup(self):
         self.app.push_screen(BackupScreen())

@@ -9,6 +9,7 @@ import rest as rst
 import sheet as shm
 import combat as cbt
 import effects as fx
+import xp as xpm
 from screens.common import DismissableScreen, tint_border
 
 
@@ -32,8 +33,8 @@ class PartyOverviewScreen(DismissableScreen):
         tint_border(self.query_one("#overview-wrap"), "adventurer")
         table = self.query_one("#party-table", DataTable)
         table.add_columns(
-            "Name", "Class", "HP", "AC",
-            "Conditions", "Spell Slots", "Active Effects",
+            "Name", "I", "Class", "HP", "AC",
+            "XP", "Conditions", "Spell Slots", "Active Effects",
         )
         self._load_data()
 
@@ -58,10 +59,17 @@ class PartyOverviewScreen(DismissableScreen):
             sheet = shm.normalize_sheet(adv["fields"].get("sheet", {}))
             active_effects = adv["fields"].get("active_effects", [])
             class_name = adv["fields"].get("class_name", "")
+            inspiration = bool(adv["fields"].get("inspiration", False))
+            current_xp = int(adv["fields"].get("xp", 0))
+            sheet_level = int(sheet.get("level") or 1)
 
             hp_cur = sheet["hp_current"]
             hp_max = sheet["hp_max"]
             hp_text = _hp_cell(hp_cur, hp_max)
+
+            insp_text = Text("★", style="bold yellow") if inspiration else Text("—", style="dim")
+
+            xp_text = _xp_cell(current_xp, sheet_level)
 
             conditions = conditions_by_id.get(adv["id"], [])
             cond_str = ", ".join(c["name"] for c in conditions) if conditions else "—"
@@ -78,9 +86,11 @@ class PartyOverviewScreen(DismissableScreen):
 
             table.add_row(
                 adv["name"],
+                insp_text,
                 class_name or "—",
                 hp_text,
                 str(sheet["ac"]),
+                xp_text,
                 cond_str,
                 slots_str,
                 effects_str,
@@ -91,6 +101,15 @@ class PartyOverviewScreen(DismissableScreen):
 
 
 # -- helpers ------------------------------------------------------------------
+
+def _xp_cell(current_xp: int, sheet_level: int) -> Text:
+    next_thresh = xpm.xp_for_next_level(sheet_level)
+    if next_thresh is None:
+        return Text(f"{current_xp:,}  (max)", style="dim")
+    if xpm.should_level_up(current_xp, sheet_level):
+        return Text(f"{current_xp:,} / {next_thresh:,}  LEVEL UP!", style="bold green")
+    return Text(f"{current_xp:,} / {next_thresh:,}")
+
 
 def _hp_cell(hp_cur: int, hp_max: int) -> Text:
     label = f"{hp_cur}/{hp_max}"

@@ -1020,3 +1020,64 @@ QuickCaptureModal {
     height: 1fr;
     background: #0d1b2a;
 }
+
+/* ── Award XP ───────────────────────────────────────────────────────────── */
+
+#xp-wrap {
+    margin: 1 2;
+    padding: 1;
+    border: solid #4a7fbf;
+    height: auto;
+}
+
+#xp-heading {
+    text-style: bold;
+    margin-bottom: 1;
+}
+
+#xp-input-row {
+    height: auto;
+    align: left middle;
+    margin-bottom: 1;
+}
+
+#xp-input-row Label {
+    width: 18;
+}
+
+.xp-amount-input {
+    width: 16;
+}
+
+#xp-split-label {
+    height: auto;
+    margin-bottom: 1;
+    color: #82aaff;
+}
+
+#xp-roster-heading {
+    height: auto;
+    margin-bottom: 0;
+}
+
+#xp-roster-scroll {
+    height: auto;
+    max-height: 12;
+}
+
+#xp-roster {
+    height: auto;
+    background: #0d1b2a;
+    border: solid #2a3f5f;
+}
+
+#xp-actions {
+    height: auto;
+    align: left middle;
+    margin-top: 1;
+}
+
+#xp-result {
+    height: auto;
+    margin-top: 1;
+}

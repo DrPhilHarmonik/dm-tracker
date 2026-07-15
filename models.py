@@ -64,6 +64,8 @@ ENTITY_SCHEMAS: dict[str, list[tuple]] = {
             "Lawful Evil", "Neutral Evil", "Chaotic Evil", "Unknown",
         ]),
         ("status", "Status", "select", ["Active", "Retired", "Dead", "Missing"]),
+        ("xp", "XP", "number", None),
+        ("inspiration", "Inspiration", "boolean", None),
     ],
     "enemy": [
         ("creature_type", "Creature Type", "text", None),
