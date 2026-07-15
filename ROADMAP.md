@@ -995,3 +995,36 @@ Round prefix (`[Round N] `) is auto-injected when a CombatTrackerScreen is
 in the screen stack; omitted otherwise. `db.latest_session()` picks the most
 recently created session; active session is cached on the App object for
 the rest of the run. 14 new tests, 248 total.
+
+---
+
+## Phase 23 -- Full SRD Monster Expansion (future)
+
+The monster reference (`screens/monster_ref.py`) ships with 33 hand-curated
+SRD entries (CR 0 Commoner through CR 21 Lich) covering a wide spread of
+challenge ratings and creature types.  This phase would expand that to the
+full ~350 monsters from the SRD 5.1 / Systems Reference Document Creative
+Commons release.
+
+**Scope:**
+- Extend `srd.py` `MONSTERS` list to the full SRD creature set.
+- No schema or UI changes required -- `srd.search()`, `srd.find()`, and
+  `MonsterRefScreen` already handle any list length.
+- Accuracy matters more than speed: each entry needs correct stat block
+  values (abilities, AC, HP, attacks, special abilities, speed, senses,
+  saves, skills).  Best approach is to source from a well-maintained
+  open-data JSON (e.g. `5e-database` / `open5e`) and write a one-time
+  import script that converts to our dict schema, then hand-review outliers.
+- Add tests that spot-check a handful of canonical entries (Adult Red Dragon,
+  Mind Flayer, Beholder, etc.) against known stat block values.
+
+**Open questions:**
+- Whether to embed the data in `srd.py` directly (simple, readable, ~3000
+  lines) or load from a bundled JSON at startup (smaller source file, tiny
+  runtime cost).
+- Beholder and Mind Flayer are in the SRD under a different legal name
+  ("Spectator" / "Mind Flayer" are fine; Beholder is "Gauth" / "Eye Tyrant"
+  depending on the source) -- check the CC release before including.
+
+**Estimate:** 6 points -- the conversion script is straightforward, but
+reviewing ~320 stat blocks for accuracy and writing focused tests adds up.

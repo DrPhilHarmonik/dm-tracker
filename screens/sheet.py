@@ -25,6 +25,7 @@ class CharacterSheetScreen(Screen):
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
         Binding("ctrl+s", "save", "Save"),
+        Binding("ctrl+e", "export_sheet", "Export Sheet"),
     ]
 
     def __init__(self, entity_id: int):
@@ -54,6 +55,7 @@ class CharacterSheetScreen(Screen):
         yield Horizontal(
             Button("Recalculate", id="btn-recalc", variant="primary"),
             Button("Save (Ctrl+S)", id="btn-save", variant="success"),
+            Button("Export Sheet", id="btn-export-sheet", variant="default"),
             Button("Cancel", id="btn-cancel", variant="default"),
             id="sheet-actions",
         )
@@ -457,9 +459,18 @@ class CharacterSheetScreen(Screen):
     def action_cancel(self):
         self.dismiss(False)
 
+    def action_export_sheet(self):
+        try:
+            path = exp.export_entity_sheet(self.entity_id)
+            self.app.notify(f"Exported to {path}", severity="information")
+        except Exception as exc:
+            self.app.notify(f"Export failed: {exc}", severity="error")
+
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "btn-save":
             self.action_save()
+        elif event.button.id == "btn-export-sheet":
+            self.action_export_sheet()
         elif event.button.id == "btn-cancel":
             self.action_cancel()
         elif event.button.id == "btn-recalc":

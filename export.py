@@ -52,6 +52,19 @@ def export_vault(output_dir: Path, include_stats: bool = True) -> int:
     return exported
 
 
+def export_entity_sheet(entity_id: int, output_path: Path | None = None) -> Path:
+    entity = db.get_entity(entity_id)
+    if entity is None:
+        raise ValueError(f"Entity {entity_id} not found")
+    if output_path is None:
+        output_path = Path.home() / "dm_exports" / f"{slugify(entity['name'])}_sheet.md"
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    md = _render_entity(entity, include_stats=True)
+    output_path.write_text(md, encoding="utf-8")
+    return output_path
+
+
 def export_json_backup(output_path: Path) -> int:
     output_path = Path(output_path).expanduser()
     output_path.parent.mkdir(parents=True, exist_ok=True)
