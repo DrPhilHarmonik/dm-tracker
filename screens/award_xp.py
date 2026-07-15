@@ -60,7 +60,7 @@ class AwardXPScreen(DismissableScreen):
         lv = self.query_one("#xp-roster", ListView)
         lv.clear()
         for adv in self._adventurers:
-            current_xp = adv["fields"].get("xp", 0)
+            current_xp = int(adv["fields"].get("xp") or 0)
             sheet_level = int(adv["fields"].get("level") or adv["fields"].get("sheet", {}).get("level") or 1)
             next_thresh = xpm.xp_for_next_level(sheet_level)
             if next_thresh is None:

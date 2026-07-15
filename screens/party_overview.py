@@ -33,7 +33,7 @@ class PartyOverviewScreen(DismissableScreen):
         tint_border(self.query_one("#overview-wrap"), "adventurer")
         table = self.query_one("#party-table", DataTable)
         table.add_columns(
-            "Name", "I", "Class", "HP", "AC",
+            "Name", "Insp", "Class", "HP", "AC",
             "XP", "Conditions", "Spell Slots", "Active Effects",
         )
         self._load_data()

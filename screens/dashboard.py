@@ -58,7 +58,7 @@ class Dashboard(Screen):
                 Button("Party Overview", id="btn-party", variant="primary"),
                 Button("Award XP", id="btn-xp", variant="warning"),
                 Button("Monster Ref", id="btn-monster", variant="default"),
-                Button("Export to Markdown", id="btn-export", variant="success"),
+                Button("Export MD", id="btn-export", variant="success"),
                 Button("Search All", id="btn-search", variant="primary"),
                 Button("Backup / Restore", id="btn-backup", variant="default"),
                 id="actions",
@@ -88,7 +88,8 @@ class Dashboard(Screen):
         await cards.remove_children()
         new_cards = [
             Button(
-                f"[bold {PALETTE[type_]}]{ENTITY_LABELS_PLURAL[type_]}[/]\n{counts.get(type_, 0)} entries",
+                f"[bold {PALETTE[type_]}]{ENTITY_LABELS_PLURAL[type_]}[/]\n"
+                + (lambda n: f"{n} {'entry' if n == 1 else 'entries'}")(counts.get(type_, 0)),
                 id=f"card-{type_}",
                 classes="card",
             )
