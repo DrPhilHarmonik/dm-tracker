@@ -21,6 +21,7 @@ from screens.entities import EntityListScreen, GlobalSearchScreen
 from screens.backup import ExportScreen, BackupScreen
 from screens.campaigns import CampaignSwitcherScreen
 from screens.rest import RestScreen
+from screens.party_overview import PartyOverviewScreen
 from screens.common import DismissableScreen, PALETTE
 
 class Dashboard(Screen):
@@ -39,6 +40,7 @@ class Dashboard(Screen):
         Binding("b", "backup", "Backup/Restore"),
         Binding("ctrl+w", "campaigns", "Campaigns"),
         Binding("r", "rest", "Party Rest"),
+        Binding("p", "party_overview", "Party Overview"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -49,6 +51,7 @@ class Dashboard(Screen):
             Horizontal(
                 Button("Switch Campaign", id="btn-campaigns", variant="default"),
                 Button("Party Rest", id="btn-rest", variant="warning"),
+                Button("Party Overview", id="btn-party", variant="primary"),
                 Button("Export to Markdown", id="btn-export", variant="success"),
                 Button("Search All", id="btn-search", variant="primary"),
                 Button("Backup / Restore", id="btn-backup", variant="default"),
@@ -102,6 +105,8 @@ class Dashboard(Screen):
             self.action_search()
         elif btn_id == "btn-rest":
             self.action_rest()
+        elif btn_id == "btn-party":
+            self.action_party_overview()
         elif btn_id == "btn-backup":
             self.action_backup()
 
@@ -116,6 +121,9 @@ class Dashboard(Screen):
 
     def action_rest(self):
         self.app.push_screen(RestScreen())
+
+    def action_party_overview(self):
+        self.app.push_screen(PartyOverviewScreen())
 
     def action_backup(self):
         self.app.push_screen(BackupScreen())

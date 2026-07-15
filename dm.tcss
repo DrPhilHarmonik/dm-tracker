@@ -1000,3 +1000,23 @@ QuickCaptureModal {
     height: auto;
     align: left middle;
 }
+
+/* ── Party Overview ─────────────────────────────────────────────────────── */
+
+#overview-wrap {
+    margin: 1 2;
+    padding: 1;
+    border: solid #4a7fbf;
+    height: 1fr;
+}
+
+#overview-status {
+    height: auto;
+    color: #82aaff;
+    margin-bottom: 1;
+}
+
+#party-table {
+    height: 1fr;
+    background: #0d1b2a;
+}
