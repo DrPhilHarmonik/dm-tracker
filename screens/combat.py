@@ -40,6 +40,8 @@ class CombatTrackerScreen(DismissableScreen):
                 yield ScrollableContainer(Container(id="hp-conditions-fields"), id="hp-conditions-scroll")
             with TabPane("Turn Controls", id="tab-turn-controls"):
                 yield ScrollableContainer(Container(id="turn-controls-fields"), id="turn-controls-scroll")
+            with TabPane("Log", id="tab-log"):
+                yield ScrollableContainer(Static(id="combat-log-body"), id="combat-log-scroll")
         yield ScrollableContainer(Static(id="combat-summary"), id="combat-summary-scroll")
         yield Footer()
 
@@ -191,6 +193,7 @@ class CombatTrackerScreen(DismissableScreen):
         self._refresh_summary()
         self._refresh_combatant_selects()
         self._refresh_balance_readout()
+        self._refresh_log()
 
     def _refresh_balance_readout(self):
         enemy_crs = []
@@ -309,6 +312,19 @@ class CombatTrackerScreen(DismissableScreen):
             for notice in self.round_notices:
                 lines.append(f"  {notice}")
         self.query_one("#combat-summary", Static).update("\n".join(lines))
+
+    def _log(self, message: str):
+        self.combat = cbt.log_entry(self.combat, self.combat["round"], message)
+
+    def _refresh_log(self):
+        entries = self.combat.get("log", [])
+        if not entries:
+            self.query_one("#combat-log-body", Static).update("[dim]No events logged yet.[/dim]")
+            return
+        lines = []
+        for e in reversed(entries):
+            lines.append(f"[dim][R{e['round']}][/dim] {e['entry']}")
+        self.query_one("#combat-log-body", Static).update("\n".join(lines))
 
     def _refresh_conditions_list(self, entity_id: int):
         lv = self.query_one("#list-conditions", ListView)
@@ -560,9 +576,11 @@ class CombatTrackerScreen(DismissableScreen):
     def _start_encounter(self):
         self.combat = cbt.start_encounter(self.combat)
         self._set_encounter_status("Active")
+        self._log("Encounter started")
         self._persist()
 
     def _end_encounter(self):
+        self._log("Encounter ended")
         self._set_encounter_status("Complete")
         self._persist()
 
@@ -580,10 +598,13 @@ class CombatTrackerScreen(DismissableScreen):
         if not entity:
             return
         sheet_data = shm.normalize_sheet(entity["fields"].get("sheet", {}))
+        hp_before = sheet_data["hp_current"]
         if damage:
-            sheet_data["hp_current"] = cbt.apply_damage(sheet_data["hp_current"], amount)
+            sheet_data["hp_current"] = cbt.apply_damage(hp_before, amount)
+            self._log(f"{entity['name']} took {amount} damage (HP: {hp_before} → {sheet_data['hp_current']})")
         else:
-            sheet_data["hp_current"] = cbt.apply_heal(sheet_data["hp_current"], sheet_data["hp_max"], amount)
+            sheet_data["hp_current"] = cbt.apply_heal(hp_before, sheet_data["hp_max"], amount)
+            self._log(f"{entity['name']} healed {amount} HP (HP: {hp_before} → {sheet_data['hp_current']})")
         fields = dict(entity["fields"])
         fields["sheet"] = sheet_data
         db.update_entity(entity_id, entity["name"], fields, entity["notes"])
@@ -606,6 +627,9 @@ class CombatTrackerScreen(DismissableScreen):
         rounds = int(rounds_raw) if rounds_raw else None
         entity_id = int(str(target_sel.value))
         self.combat = cbt.add_condition(self.combat, entity_id, name, rounds)
+        entity = db.get_entity(entity_id)
+        suffix = f" ({rounds} rounds)" if rounds else " (indefinite)"
+        self._log(f"{entity['name'] if entity else entity_id} gained condition: {name}{suffix}")
         self.query_one("#input-condition-custom", Input).value = ""
         self.query_one("#input-condition-rounds", Input).value = ""
         self._persist()
@@ -642,13 +666,22 @@ class CombatTrackerScreen(DismissableScreen):
         if sel.value is Select.NULL:
             return
         entity_id = int(str(sel.value))
+        entity = db.get_entity(entity_id)
+        entity_name = entity["name"] if entity else str(entity_id)
         self.combat, resolution = cbt.add_death_save(self.combat, entity_id, success)
+        combatant = next((c for c in self.combat["combatants"] if c["entity_id"] == entity_id), None)
+        saves = combatant["death_saves"] if combatant else {"successes": 0, "failures": 0}
+        result_word = "success" if success else "failure"
         if resolution == "stable":
+            self._log(f"{entity_name} death save {result_word} -> Stable (3 successes)")
             self.combat = cbt.add_condition(self.combat, entity_id, "Stable", None)
             self.combat = cbt.reset_death_saves(self.combat, entity_id)
         elif resolution == "dead":
+            self._log(f"{entity_name} death save {result_word} -> Dead (3 failures)")
             self.combat = cbt.add_condition(self.combat, entity_id, "Dead", None)
             self.combat = cbt.reset_death_saves(self.combat, entity_id)
+        else:
+            self._log(f"{entity_name} death save {result_word} (S:{saves['successes']} F:{saves['failures']})")
         self._persist()
         self._refresh_death_save_section()
         self._refresh_conditions_list(entity_id)
@@ -661,6 +694,11 @@ class CombatTrackerScreen(DismissableScreen):
         if lv.index is None:
             return
         entity_id = int(str(sel.value))
+        entity = db.get_entity(entity_id)
+        combatant = next((c for c in self.combat["combatants"] if c["entity_id"] == entity_id), None)
+        if combatant and 0 <= lv.index < len(combatant["conditions"]):
+            cond_name = combatant["conditions"][lv.index]["name"]
+            self._log(f"{entity['name'] if entity else entity_id} lost condition: {cond_name}")
         self.combat = cbt.remove_condition(self.combat, entity_id, lv.index)
         self._persist()
         self._refresh_conditions_list(entity_id)
@@ -694,6 +732,10 @@ class CombatTrackerScreen(DismissableScreen):
             self.combat = cbt.next_turn(self.combat)
             if self.combat["round"] != old_round:
                 self._tick_combatant_effects()
+            current = cbt.current_combatant(self.combat)
+            if current:
+                e = db.get_entity(current["entity_id"])
+                self._log(f"Round {self.combat['round']}: {e['name'] if e else '?'}'s turn")
             self._persist()
             self._sync_attacker_to_current_turn()
         elif bid == "btn-next-round":
@@ -701,6 +743,7 @@ class CombatTrackerScreen(DismissableScreen):
             self.combat = cbt.next_round(self.combat)
             if self.combat["round"] != old_round:
                 self._tick_combatant_effects()
+            self._log(f"-- Round {self.combat['round']} begins --")
             self._persist()
             self._sync_attacker_to_current_turn()
         elif bid == "btn-end-encounter":

@@ -9,7 +9,7 @@ source of truth.
 
 
 def default_combat() -> dict:
-    return {"round": 1, "turn_index": 0, "started": False, "combatants": []}
+    return {"round": 1, "turn_index": 0, "started": False, "combatants": [], "log": []}
 
 
 def normalize_combat(raw: dict | None) -> dict:
@@ -18,6 +18,7 @@ def normalize_combat(raw: dict | None) -> dict:
     combat["round"] = int(raw.get("round") or 1)
     combat["turn_index"] = int(raw.get("turn_index") or 0)
     combat["started"] = bool(raw.get("started", False))
+    combat["log"] = list(raw.get("log") or [])
     combat["combatants"] = [
         {
             "entity_id": int(c["entity_id"]),
@@ -196,3 +197,9 @@ def apply_damage(hp_current: int, amount: int) -> int:
 
 def apply_heal(hp_current: int, hp_max: int, amount: int) -> int:
     return min(hp_max, hp_current + amount)
+
+
+def log_entry(combat: dict, round_: int, message: str) -> dict:
+    """Append a log entry and return the combat dict."""
+    combat.setdefault("log", []).append({"round": round_, "entry": message})
+    return combat

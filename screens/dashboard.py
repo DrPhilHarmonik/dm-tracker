@@ -24,6 +24,7 @@ from screens.rest import RestScreen
 from screens.party_overview import PartyOverviewScreen
 from screens.award_xp import AwardXPScreen
 from screens.monster_ref import MonsterRefScreen
+from screens.encounter_gen import EncounterGenScreen
 from screens.common import DismissableScreen, PALETTE
 
 class Dashboard(Screen):
@@ -45,6 +46,7 @@ class Dashboard(Screen):
         Binding("p", "party_overview", "Party Overview"),
         Binding("ctrl+x", "award_xp", "Award XP"),
         Binding("m", "monster_ref", "Monster Ref"),
+        Binding("g", "encounter_gen", "Gen Encounter"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -58,6 +60,7 @@ class Dashboard(Screen):
                 Button("Party Overview", id="btn-party", variant="primary"),
                 Button("Award XP", id="btn-xp", variant="warning"),
                 Button("Monster Ref", id="btn-monster", variant="default"),
+                Button("Gen Encounter", id="btn-gen", variant="warning"),
                 Button("Export MD", id="btn-export", variant="success"),
                 Button("Search All", id="btn-search", variant="primary"),
                 Button("Backup / Restore", id="btn-backup", variant="default"),
@@ -118,6 +121,8 @@ class Dashboard(Screen):
             self.action_award_xp()
         elif btn_id == "btn-monster":
             self.action_monster_ref()
+        elif btn_id == "btn-gen":
+            self.action_encounter_gen()
         elif btn_id == "btn-backup":
             self.action_backup()
 
@@ -141,6 +146,9 @@ class Dashboard(Screen):
 
     def action_monster_ref(self):
         self.app.push_screen(MonsterRefScreen())
+
+    def action_encounter_gen(self):
+        self.app.push_screen(EncounterGenScreen())
 
     def action_backup(self):
         self.app.push_screen(BackupScreen())
