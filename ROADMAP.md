@@ -1,12 +1,13 @@
 # DM Tracker — Build History & Roadmap
 
-22 phases complete. The core feature set covers the full D&D 5e session loop:
+26 phases complete. The core feature set covers the full D&D 5e session loop:
 character creation (wizard, D&D Beyond import, CSV), character sheets (abilities,
 combat, skills & saves, attacks, spells), combat tracking (initiative, turn order,
-HP, conditions, death saves, action economy, spellcasting, summons), active effects,
-encounter balance, session notes, multi-campaign support, in-session quick capture,
-party rest, party overview, XP tracking, and an SRD monster reference with
-Add-to-Campaign. Phase 23 (full SRD monster expansion) is queued.
+HP, conditions, death saves, action economy, spellcasting, summons, combat log),
+active effects, encounter balance, session notes, multi-campaign support, in-session
+quick capture, party rest, party overview, XP tracking, SRD monster reference
+(322 monsters) with Add-to-Campaign, allied NPC combat forms, encounter generator,
+and character sheet export. No phases currently queued.
 
 ---
 
@@ -279,26 +280,42 @@ frontmatter + sheet stats + relationships + notes). Default path:
 `~/dm_exports/<slugified-name>_sheet.md`. "Export Sheet" button and `^e` binding
 on `CharacterSheetScreen`; toast shows saved path. 26 new tests, 322 total.
 
----
+### Phase 23 -- Full SRD Monster Expansion
 
-## Phase 23 -- Full SRD Monster Expansion (future)
+**Status: Done.** `data/monsters.json` -- 322 SRD monsters fetched from open5e,
+converted to the app's schema via `dev/build_srd.py`. `srd.py` loads from the
+JSON at import time; the original 33-entry list is kept as a fallback.
+Attacks correctly separated from save-based specials (breath weapons, multiattack)
+by checking for "to hit" in the action description. `MonsterRefScreen` and
+`wizard_prefill()` needed no changes. Note: Beholder, Mind Flayer, and Banshee
+are not in the WotC SRD CC -- they are product identity and absent from the
+open5e `wotc-srd` dataset. 9 new tests, 331 total.
 
-The monster reference ships with 33 hand-curated SRD entries covering a wide
-spread of challenge ratings and creature types. This phase expands to the full
-~350 monsters from the SRD 5.1 Creative Commons release.
+### Phase 23a -- Make Allied (NPC Allied Combat Forms)
 
-**Scope:**
-- Extend `srd.py`'s `MONSTERS` list to the full SRD creature set.
-- No schema or UI changes needed -- `srd.search()`, `srd.find()`, and
-  `MonsterRefScreen` already handle any list length.
-- Source from a well-maintained open-data JSON (e.g. `5e-database` / `open5e`);
-  write a one-time import script that converts to the dict schema, then hand-review
-  outliers for accuracy.
-- Add tests that spot-check canonical entries (Adult Red Dragon, Mind Flayer,
-  Banshee, etc.) against known stat block values.
-- Whether to embed data in `srd.py` directly (~3000 lines) or load from a bundled
-  JSON at startup is an open question -- either works, JSON is cleaner.
-- Note: Beholder is "Gauth" / "Eye Tyrant" in SRD CC release depending on source;
-  verify legal name before including.
+**Status: Done.** Mirror of "Make Hostile": "Make Allied" button (`y`) on any
+NPC detail screen opens the Enemy Quick Wizard prefilled with `(Allied)` in the
+name. On completion, writes an `allied form of` relationship back to the NPC.
+`allied form of` added to `RELATIONSHIP_TYPES`. `WizardScreen` gained a
+`link_rel_type` parameter (defaults to `"hostile form of"` for backward compat).
+3 new tests, 325 total.
 
-**Estimate:** 6 points.
+### Phase 24 -- Combat Log
+
+**Status: Done.** `combat.py` gained `log_entry()` and a `"log"` key in the
+combat state (persisted in `fields["combat"]`). `CombatTrackerScreen` gained a
+"Log" tab showing entries newest-first with `[RN]` round prefixes. Logged events:
+encounter start/end, HP damage/heal (with before → after values), conditions
+added/removed, death save results with resolution, and turn/round advances.
+7 new tests, 339 total.
+
+### Phase 25 -- Encounter Generator
+
+**Status: Done.** New `encounter_gen.py`: `generate(party_levels, difficulty,
+pool, seed)` tries monster counts 1-6, computes the raw XP budget for each
+(target adjusted XP / multiplier), samples candidates close to the per-monster
+budget, and returns whichever configuration lands closest to the target. New
+`EncounterGenScreen`: party size + average level + difficulty inputs; DataTable
+of results (Name, CR, Type, HP, AC, XP); Regenerate reshuffles; "Add All to
+Campaign" creates Enemy entities from the selection. `g` key on dashboard.
+9 new tests, 347 total.
