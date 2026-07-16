@@ -2,7 +2,7 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.widgets import Header, Footer, Label, Button, DataTable, Input, Select, TextArea, Static, ListView, ListItem, TabbedContent, TabPane, Switch
 from textual.screen import Screen, ModalScreen
-from textual.containers import Container, Horizontal, ScrollableContainer
+from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual import on
 from rich.text import Text
 from pathlib import Path
@@ -76,16 +76,23 @@ class CharacterSheetScreen(Screen):
 
     async def _build_abilities_tab(self):
         container = self.query_one("#abilities-fields")
-        rows = [
+        abilities = shm.ABILITIES
+        grid_rows = [
             Horizontal(
-                Label(shm.ABILITY_LABELS[a], classes="ability-label"),
-                Input(value=str(self.sheet["abilities"][a]), id=f"sheet-ability-{a}", classes="ability-input"),
-                Static("+0", id=f"sheet-mod-{a}", classes="ability-mod"),
-                classes="ability-row",
+                *[
+                    Vertical(
+                        Label(a.upper(), classes="ability-cell-label"),
+                        Input(value=str(self.sheet["abilities"][a]), id=f"sheet-ability-{a}", classes="ability-input"),
+                        Static("+0", id=f"sheet-mod-{a}", classes="ability-mod"),
+                        classes="ability-cell",
+                    )
+                    for a in abilities[i : i + 3]
+                ],
+                classes="ability-grid-row",
             )
-            for a in shm.ABILITIES
+            for i in range(0, 6, 3)
         ]
-        await container.mount(*rows)
+        await container.mount(*grid_rows)
 
     async def _build_combat_tab(self):
         container = self.query_one("#combat-fields")
