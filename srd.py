@@ -4,9 +4,16 @@ Each entry maps directly to WizardScreen.data keys so it can be passed as
 prefill. Fields that the wizard doesn't use (speed, senses, etc.) are stored
 here for display purposes in the reference panel but are not written to the DB
 through this path -- the CharacterSheetScreen handles them after creation.
-"""
 
-MONSTERS: list[dict] = [
+Monster data is loaded from data/monsters.json at import time. The fallback
+list below is used only if the JSON is missing (development / first-run).
+"""
+import json as _json
+from pathlib import Path as _Path
+
+_DATA_FILE = _Path(__file__).parent / "data" / "monsters.json"
+
+_FALLBACK: list[dict] = [
     # --- CR 0 ---
     {
         "name": "Commoner", "cr": "0", "creature_type": "Humanoid",
@@ -559,6 +566,11 @@ MONSTERS: list[dict] = [
         "senses": "truesight 120 ft., passive Perception 20", "languages": "Common plus five others",
     },
 ]
+
+try:
+    MONSTERS: list[dict] = _json.loads(_DATA_FILE.read_text(encoding="utf-8"))
+except (FileNotFoundError, _json.JSONDecodeError):
+    MONSTERS = _FALLBACK
 
 
 def search(query: str) -> list[dict]:
