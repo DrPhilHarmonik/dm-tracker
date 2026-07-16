@@ -35,7 +35,13 @@ def test_session_workflow_lists_pcs_quests_encounters_npcs_and_notes(monkeypatch
     _setup(monkeypatch, tmp_path)
     db.create_entity("session", "Session 1", {"session_number": "1"}, "")
     db.create_entity("adventurer", "Brynn Ashforge", {"class_name": "Fighter", "level": "2"}, "")
-    quest_id = db.create_entity("quest", "Find the Moon Key", {"status": "Active"}, "")
+    quest_id = db.create_entity("quest", "Find the Moon Key", {
+        "status": "Active",
+        "objectives": [
+            {"text": "Recover the key", "done": True},
+            {"text": "Return to Mira", "done": False},
+        ],
+    }, "")
     db.create_entity("encounter", "Ambush", {"status": "Active"}, "")
     npc_id = db.create_entity("npc", "Mira Thorn", {"race": "Human"}, "")
     db.create_relationship(npc_id, quest_id, "gave quest", "")
@@ -48,6 +54,7 @@ def test_session_workflow_lists_pcs_quests_encounters_npcs_and_notes(monkeypatch
 
             assert str(wf.query_one("#wf-pcs").get_cell_at((0, 0))) == "Brynn Ashforge"
             assert str(wf.query_one("#wf-quests").get_cell_at((0, 0))) == "Find the Moon Key"
+            assert str(wf.query_one("#wf-quests").get_cell_at((0, 2))) == "1 / 2 complete"
             assert str(wf.query_one("#wf-encounters").get_cell_at((0, 0))) == "Ambush"
             assert str(wf.query_one("#wf-npcs").get_cell_at((0, 0))) == "Mira Thorn"
 

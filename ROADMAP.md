@@ -1,14 +1,14 @@
 # DM Tracker — Build History & Roadmap
 
-26 phases complete. The core feature set covers the full D&D 5e session loop:
+27 phases complete. The core feature set covers the full D&D 5e session loop:
 character creation (wizard, D&D Beyond import, CSV), character sheets (abilities,
 combat, skills & saves, attacks, spells), combat tracking (initiative, turn order,
 HP, conditions, death saves, action economy, spellcasting, summons, combat log),
 active effects, encounter balance, session notes, multi-campaign support, in-session
 quick capture, party rest, party overview, XP tracking, SRD monster reference
 (322 monsters) with Add-to-Campaign, allied NPC combat forms, encounter generator,
-and character sheet export. Phases 26-29 planned: quest objectives, relationship
-graph view, calendar/session timeline, and VTT importers.
+quest objectives, relationship browser, and character sheet export. Phases 28-29
+planned: calendar/session timeline and VTT importers.
 
 ---
 
@@ -37,8 +37,8 @@ graph view, calendar/session timeline, and VTT importers.
 
 ## TUI Review Passes
 
-See `CLAUDE.md` for the full process (screenshot-based visual review, since
-automated tests drive screens programmatically and never actually render them).
+Screenshot-based visual review supplements the automated UI tests, since those
+tests drive screens programmatically but do not inspect rendered layouts.
 
 **Pass 1 -- 2026-06-21.** Caught and fixed: edit-flat-fields silently wiped
 `sheet`/`active_effects`/`combat` data (critical data-loss bug); Start Encounter
@@ -323,27 +323,23 @@ Campaign" creates Enemy entities from the selection. `g` key on dashboard.
 
 ### Phase 26 -- Quest Objectives
 
-**Status: Planned.**
+**Status: Done.** Quest `fields["objectives"]` is now a validated list of
+`{text, done}` dicts. `normalize_special_fields()` handles migration for existing
+quest records (missing key defaults to `[]`). Quest detail screen gained an
+Objectives table, an Add Objective modal, and a toggle action/button for the
+selected objective. Objective completion progress is surfaced in `EntityListScreen`
+and `SessionWorkflowScreen` (e.g. "3 / 5 complete"). 7 new tests, 354 total.
 
-`objectives` key added to quest `fields` schema: a list of `{text, done}` dicts.
-`normalize_special_fields()` handles migration for existing quest records (missing
-key defaults to `[]`). Quest detail screen gains an Objectives section -- a
-DataTable or scrollable checklist with a keybinding to toggle `done` on the
-selected item and a button to add a new objective. Incomplete objective count
-surfaced on quest cards in `EntityListScreen` (e.g. "3 / 5 complete"). Active
-quest incomplete objectives also surfaced in `SessionWorkflowScreen`.
+### Phase 27 -- Relationship Browser
 
-### Phase 27 -- Relationship Graph View
-
-**Status: Planned.**
-
-New `screens/graph.py` -- `RelationshipGraphScreen`. Loads every entity and every
-relationship from the DB; renders as a scrollable adjacency list grouped by entity
-type (each entity is a header, its relationships listed beneath with direction and
-type label). Filter bar narrows to a single entity type. Selecting an entry pushes
-`EntityDetailScreen` for that entity. `R` key on dashboard; also reachable from
-any entity detail view. No external graph library required -- pure Textual widgets
-(DataTable or ListView).
+**Status: Done.** New `screens/relationships.py` --
+`RelationshipBrowserScreen`. Loads every entity and every relationship from the
+DB; renders a dense table grouped by entity type with direction, relationship
+type, and related entity columns. Filter bar narrows to a single entity type.
+Selecting a relationship row pushes `EntityDetailScreen` for the related entity;
+entities without relationships open themselves. `R` key on dashboard; also
+reachable from any entity detail view. No external graph library required --
+pure Textual widgets. 4 new tests, 358 total.
 
 ### Phase 28 -- Calendar & Session Timeline
 
@@ -351,7 +347,7 @@ any entity detail view. No external graph library required -- pure Textual widge
 
 New `calendar.py`: in-world date type with configurable calendar (standard 12-month
 Gregorian-style by default; Forgotten Realms Calendar of Harptos as a named
-preset). Sessions gain an `in_world_date` field (stored as a string in the
+preset). Sessions reuse the existing `in_game_date` field (stored as a string in the
 campaign-defined format). New `TimelineScreen` reachable via `t` on the dashboard:
 sessions sorted by in-world date in a DataTable, each row showing date, session
 name, and a one-line summary (first sentence of notes). Clicking a row navigates

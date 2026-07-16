@@ -9,9 +9,9 @@ in this environment. Usage from a throwaway driver script:
     app.save_screenshot("/tmp/ui_pass/01_dashboard.svg")
     svg_to_png("/tmp/ui_pass/01_dashboard.svg")  # -> 01_dashboard.png next to it
 
-See ROADMAP.md's "TUI Review Passes" section and CLAUDE.md for when/why to
-run a full pass, and tests/test_ui_*.py for the app-driving pattern (boot
-DMApp via app.run_test(), navigate with pilot.press()/action_*() calls).
+See ROADMAP.md's "TUI Review Passes" section for when/why to run a full pass,
+and tests/test_ui_*.py for the app-driving pattern (boot DMApp via
+app.run_test(), navigate with pilot.press()/action_*() calls).
 """
 import subprocess
 from pathlib import Path

@@ -11,7 +11,7 @@ import combat as combat_mod
 
 DEFAULT_DB_PATH = Path.home() / ".config" / "dm" / "campaign.db"
 
-SPECIAL_FIELD_KEYS = {"sheet", "active_effects", "combat"}
+SPECIAL_FIELD_KEYS = {"sheet", "active_effects", "combat", "objectives"}
 
 
 def db_path() -> Path:
@@ -96,7 +96,30 @@ def validate_name(name) -> str:
     return name.strip()
 
 
-def normalize_special_fields(fields: dict) -> dict:
+def normalize_objectives(objectives: list) -> list[dict]:
+    if not isinstance(objectives, list):
+        raise ValueError("fields['objectives'] must be a list")
+    normalized = []
+    for objective in objectives:
+        if not isinstance(objective, dict):
+            raise ValueError("each objective must be an object")
+        text = objective.get("text", "")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("objective text must be a non-empty string")
+        done = objective.get("done", False)
+        if not isinstance(done, bool):
+            raise ValueError("objective done must be a boolean")
+        normalized.append({"text": text.strip(), "done": done})
+    return normalized
+
+
+def objective_progress(fields: dict) -> tuple[int, int]:
+    objectives = normalize_objectives(fields.get("objectives", []))
+    done = sum(1 for objective in objectives if objective["done"])
+    return done, len(objectives)
+
+
+def normalize_special_fields(fields: dict, type_: str | None = None) -> dict:
     """Type-check and normalize the sheet/active_effects/combat sub-shapes
     that ride alongside an entity's flat schema fields. Used by every write
     path, including bulk import, so malformed nested data can never reach
@@ -115,6 +138,12 @@ def normalize_special_fields(fields: dict) -> dict:
         if not isinstance(fields["combat"], dict):
             raise ValueError("fields['combat'] must be an object")
         fields["combat"] = combat_mod.normalize_combat(fields["combat"])
+    if "objectives" in fields:
+        if type_ is not None and type_ != "quest":
+            raise ValueError("fields['objectives'] is only valid for quests")
+        fields["objectives"] = normalize_objectives(fields["objectives"])
+    elif type_ == "quest":
+        fields["objectives"] = []
     return fields
 
 
@@ -147,7 +176,7 @@ def validate_fields(type_: str, fields: dict) -> dict:
         if ftype == "number" and not str(value).strip().lstrip("-").isdigit():
             raise ValueError(f"Invalid value {value!r} for field {label!r}: must be a number")
 
-    return normalize_special_fields(fields)
+    return normalize_special_fields(fields, type_)
 
 
 # --- Entity CRUD ---
@@ -286,7 +315,7 @@ def replace_all(entities: list[dict], relationships: list[dict]):
     normalized_entities = []
     for entity in entities:
         validate_entity_type(entity["type"])
-        normalized_entities.append({**entity, "fields": normalize_special_fields(entity["fields"])})
+        normalized_entities.append({**entity, "fields": normalize_special_fields(entity["fields"], entity["type"])})
     for relationship in relationships:
         validate_relationship_type(relationship["rel_type"])
 
@@ -336,3 +365,31 @@ def entity_counts() -> dict[str, int]:
             "SELECT type, COUNT(*) as c FROM entities GROUP BY type"
         ).fetchall()
         return {r["type"]: r["c"] for r in rows}
+
+
+def add_objective(quest_id: int, text: str) -> None:
+    quest = get_entity(quest_id)
+    if quest is None:
+        raise ValueError(f"No entity with id {quest_id}")
+    if quest["type"] != "quest":
+        raise ValueError("objectives can only be added to quests")
+    fields = dict(quest["fields"])
+    objectives = normalize_objectives(fields.get("objectives", []))
+    objectives.append({"text": text, "done": False})
+    fields["objectives"] = objectives
+    update_entity(quest_id, quest["name"], fields, quest["notes"])
+
+
+def toggle_objective(quest_id: int, index: int) -> None:
+    quest = get_entity(quest_id)
+    if quest is None:
+        raise ValueError(f"No entity with id {quest_id}")
+    if quest["type"] != "quest":
+        raise ValueError("objectives can only be toggled on quests")
+    fields = dict(quest["fields"])
+    objectives = normalize_objectives(fields.get("objectives", []))
+    if index < 0 or index >= len(objectives):
+        raise IndexError("objective index out of range")
+    objectives[index]["done"] = not objectives[index]["done"]
+    fields["objectives"] = objectives
+    update_entity(quest_id, quest["name"], fields, quest["notes"])

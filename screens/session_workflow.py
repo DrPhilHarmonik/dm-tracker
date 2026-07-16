@@ -48,7 +48,7 @@ class SessionWorkflowScreen(DismissableScreen):
         tint_border(self.query_one("#session-workflow-scroll"), "session")
         for table_id, columns in (
             ("wf-pcs", ("Name", "Class", "Level")),
-            ("wf-quests", ("Name", "Difficulty", "Giver")),
+            ("wf-quests", ("Name", "Difficulty", "Objectives")),
             ("wf-encounters", ("Name", "Status", "Location")),
             ("wf-npcs", ("Name", "Race", "Role")),
             ("wf-notes", ("Name", "Type", "Updated")),
@@ -60,7 +60,7 @@ class SessionWorkflowScreen(DismissableScreen):
         self._fill("wf-pcs", wf.player_characters(),
                     lambda e: (e["fields"].get("class_name", ""), str(e["fields"].get("level", ""))))
         self._fill("wf-quests", wf.active_quests(),
-                    lambda e: (e["fields"].get("difficulty", ""), e["fields"].get("giver", "")))
+                    lambda e: (e["fields"].get("difficulty", ""), self._objective_progress_text(e)))
         self._fill("wf-encounters", wf.active_encounters(),
                     lambda e: (e["fields"].get("status", ""), e["fields"].get("location", "")))
         self._fill("wf-npcs", wf.notable_npcs(),
@@ -74,6 +74,12 @@ class SessionWorkflowScreen(DismissableScreen):
         for e in entities:
             cols = (Text(e["name"], style=f"bold {PALETTE.get(e['type'], '')}"),) + tuple(extra_cols(e))
             table.add_row(*cols, key=str(e["id"]))
+
+    def _objective_progress_text(self, quest: dict) -> str:
+        done, total = db.objective_progress(quest["fields"])
+        if total == 0:
+            return "No objectives"
+        return f"{done} / {total} complete"
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected):
         from screens.entities import EntityDetailScreen

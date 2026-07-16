@@ -55,7 +55,10 @@ class EntityListScreen(DismissableScreen):
     async def on_mount(self):
         self.title = self.label_plural
         table = self.query_one(DataTable)
-        table.add_columns("Name", *[label for _, label, _, _ in ENTITY_SCHEMAS.get(self.type_, [])][:3])
+        if self.type_ == "quest":
+            table.add_columns("Name", "Status", "Difficulty", "Objectives")
+        else:
+            table.add_columns("Name", *[label for _, label, _, _ in ENTITY_SCHEMAS.get(self.type_, [])][:3])
         tint_border(table, self.type_)
         if self.type_ in WIZARD_ENTITY_TYPES:
             await self.query_one("#list-toolbar").mount(
@@ -71,9 +74,17 @@ class EntityListScreen(DismissableScreen):
         schema = ENTITY_SCHEMAS.get(self.type_, [])
         keys = [k for k, *_ in schema][:3]
         for e in entities:
-            cols = [Text(e["name"], style=f"bold {PALETTE[self.type_]}")] + [
-                str(e["fields"].get(k, "")) for k in keys
-            ]
+            if self.type_ == "quest":
+                cols = [
+                    Text(e["name"], style=f"bold {PALETTE[self.type_]}"),
+                    str(e["fields"].get("status", "")),
+                    str(e["fields"].get("difficulty", "")),
+                    _objective_progress_text(e["fields"]),
+                ]
+            else:
+                cols = [Text(e["name"], style=f"bold {PALETTE[self.type_]}")] + [
+                    str(e["fields"].get(k, "")) for k in keys
+                ]
             table.add_row(*cols, key=str(e["id"]))
 
     @on(Input.Changed, "#search")
@@ -188,6 +199,49 @@ def _schema_choices(entity_type: str, key: str) -> list[str]:
     return []
 
 
+def _objective_progress_text(fields: dict) -> str:
+    done, total = db.objective_progress(fields)
+    if total == 0:
+        return "No objectives"
+    return f"{done} / {total} complete"
+
+
+class AddObjectiveModal(ModalScreen):
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("enter", "save", "Save"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Label("Objective"),
+            Input(placeholder="Recover the signet ring", id="objective-text"),
+            Horizontal(
+                Button("Add", id="btn-add-objective", variant="success"),
+                Button("Cancel", id="btn-cancel-objective"),
+                id="objective-modal-actions",
+            ),
+            id="objective-modal",
+        )
+
+    def on_mount(self):
+        self.query_one("#objective-text", Input).focus()
+
+    def action_save(self):
+        text = self.query_one("#objective-text", Input).value.strip()
+        if text:
+            self.dismiss(text)
+
+    def action_cancel(self):
+        self.dismiss(None)
+
+    def on_button_pressed(self, event: Button.Pressed):
+        if event.button.id == "btn-add-objective":
+            self.action_save()
+        elif event.button.id == "btn-cancel-objective":
+            self.action_cancel()
+
+
 # ---------------------------------------------------------------------------
 # Entity Detail
 # ---------------------------------------------------------------------------
@@ -273,6 +327,9 @@ class EntityDetailScreen(DismissableScreen):
         Binding("o", "open_combat", "Combat Tracker"),
         Binding("f", "open_effects", "Effects"),
         Binding("w", "open_session_workflow", "Session Workflow"),
+        Binding("a", "add_objective", "Add Objective"),
+        Binding("t", "toggle_objective", "Toggle Objective"),
+        Binding("R", "relationship_browser", "Relationships"),
     ]
 
     def __init__(self, entity_id: int):
@@ -294,12 +351,16 @@ class EntityDetailScreen(DismissableScreen):
             return entity["type"] == "encounter"
         if action == "open_session_workflow":
             return entity["type"] == "session"
+        if action in ("add_objective", "toggle_objective"):
+            return entity["type"] == "quest"
         return True
 
     def compose(self) -> ComposeResult:
         yield Header()
         yield ScrollableContainer(
             Static(id="detail-body"),
+            Static("Objectives", id="objectives-heading"),
+            DataTable(id="objectives-table", cursor_type="row"),
             id="detail-scroll",
         )
         yield Horizontal(
@@ -311,6 +372,8 @@ class EntityDetailScreen(DismissableScreen):
         yield Footer()
 
     async def on_mount(self):
+        obj_table = self.query_one("#objectives-table", DataTable)
+        obj_table.add_columns("Done", "Objective")
         self._render_detail()
         entity = db.get_entity(self.entity_id)
         if not entity:
@@ -332,6 +395,12 @@ class EntityDetailScreen(DismissableScreen):
             await actions.mount(Button("Combat Tracker", id="btn-combat", variant="warning"))
         if entity["type"] == "session":
             await actions.mount(Button("Session Workflow", id="btn-session-workflow", variant="warning"))
+        if entity["type"] == "quest":
+            await actions.mount(
+                Button("Add Objective", id="btn-add-objective", variant="success"),
+                Button("Toggle Objective", id="btn-toggle-objective", variant="warning"),
+            )
+        await actions.mount(Button("Relationships", id="btn-relationship-browser", variant="default"))
 
     def _render_detail(self):
         entity = db.get_entity(self.entity_id)
@@ -341,6 +410,7 @@ class EntityDetailScreen(DismissableScreen):
         self.title = entity["name"]
         schema = ENTITY_SCHEMAS.get(entity["type"], [])
         rels = db.get_relationships(self.entity_id)
+        self._load_objectives(entity)
 
         lines = [f"[bold {PALETTE[entity['type']]}]{entity['name']}[/]",
                  f"[dim]{ENTITY_LABELS[entity['type']]}[/]", ""]
@@ -374,6 +444,18 @@ class EntityDetailScreen(DismissableScreen):
 
         self.query_one("#detail-body", Static).update("\n".join(lines))
 
+    def _load_objectives(self, entity: dict):
+        heading = self.query_one("#objectives-heading", Static)
+        table = self.query_one("#objectives-table", DataTable)
+        is_quest = entity["type"] == "quest"
+        heading.display = is_quest
+        table.display = is_quest
+        table.clear()
+        if not is_quest:
+            return
+        for index, objective in enumerate(entity["fields"].get("objectives", [])):
+            table.add_row("Yes" if objective["done"] else "No", objective["text"], key=str(index))
+
     def on_button_pressed(self, event: Button.Pressed):
         if event.button.id == "btn-edit":
             self.action_edit()
@@ -395,6 +477,12 @@ class EntityDetailScreen(DismissableScreen):
             self.action_open_effects()
         elif event.button.id == "btn-session-workflow":
             self.action_open_session_workflow()
+        elif event.button.id == "btn-add-objective":
+            self.action_add_objective()
+        elif event.button.id == "btn-toggle-objective":
+            self.action_toggle_objective()
+        elif event.button.id == "btn-relationship-browser":
+            self.action_relationship_browser()
 
     def action_edit(self):
         entity = db.get_entity(self.entity_id)
@@ -477,6 +565,31 @@ class EntityDetailScreen(DismissableScreen):
         if entity and entity["type"] == "session":
             from screens.session_workflow import SessionWorkflowScreen
             self.app.push_screen(SessionWorkflowScreen(self.entity_id), callback=lambda _: self._render_detail())
+
+    def action_add_objective(self):
+        entity = db.get_entity(self.entity_id)
+        if entity and entity["type"] == "quest":
+            self.app.push_screen(AddObjectiveModal(), callback=self._on_add_objective)
+
+    def _on_add_objective(self, text: str | None):
+        if text:
+            db.add_objective(self.entity_id, text)
+            self._render_detail()
+
+    def action_toggle_objective(self):
+        entity = db.get_entity(self.entity_id)
+        if not entity or entity["type"] != "quest":
+            return
+        table = self.query_one("#objectives-table", DataTable)
+        if table.row_count == 0 or table.cursor_row is None:
+            return
+        cell_key = table.coordinate_to_cell_key(table.cursor_coordinate)
+        db.toggle_objective(self.entity_id, int(cell_key.row_key.value))
+        self._render_detail()
+
+    def action_relationship_browser(self):
+        from screens.relationships import RelationshipBrowserScreen
+        self.app.push_screen(RelationshipBrowserScreen(self.entity_id), callback=lambda _: self._render_detail())
 
 
 class EntityFormScreen(Screen):

@@ -73,6 +73,60 @@ def test_create_entity_rejects_malformed_active_effects_type(monkeypatch, tmp_pa
         db.create_entity("adventurer", "Mira Thorn", {"active_effects": "not a list"}, "")
 
 
+def test_quest_objectives_default_to_empty_list(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    quest_id = db.create_entity("quest", "Find the Moon Key", {"status": "Active"}, "")
+
+    assert db.get_entity(quest_id)["fields"]["objectives"] == []
+
+
+def test_quest_objectives_are_validated_and_normalized(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    quest_id = db.create_entity(
+        "quest",
+        "Find the Moon Key",
+        {"objectives": [{"text": "  Recover the key  ", "done": False}]},
+        "",
+    )
+
+    assert db.get_entity(quest_id)["fields"]["objectives"] == [
+        {"text": "Recover the key", "done": False}
+    ]
+
+
+def test_quest_objectives_reject_malformed_shapes(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    with pytest.raises(ValueError, match="objectives'\\] must be a list"):
+        db.create_entity("quest", "Find the Moon Key", {"objectives": "Recover the key"}, "")
+    with pytest.raises(ValueError, match="objective text"):
+        db.create_entity("quest", "Find the Moon Key", {"objectives": [{"text": "", "done": False}]}, "")
+    with pytest.raises(ValueError, match="objective done"):
+        db.create_entity("quest", "Find the Moon Key", {"objectives": [{"text": "Recover", "done": "yes"}]}, "")
+
+
+def test_objectives_are_quest_only(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    with pytest.raises(ValueError, match="only valid for quests"):
+        db.create_entity("npc", "Mira Thorn", {"objectives": [{"text": "Recover", "done": False}]}, "")
+
+
+def test_add_and_toggle_objective(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    quest_id = db.create_entity("quest", "Find the Moon Key", {}, "")
+
+    db.add_objective(quest_id, "Recover the key")
+    db.toggle_objective(quest_id, 0)
+
+    assert db.get_entity(quest_id)["fields"]["objectives"] == [
+        {"text": "Recover the key", "done": True}
+    ]
+
+
 def test_create_entity_normalizes_sheet_on_write(monkeypatch, tmp_path):
     monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
     db.init_db()
