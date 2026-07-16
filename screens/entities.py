@@ -269,6 +269,7 @@ class EntityDetailScreen(DismissableScreen):
         Binding("c", "open_sheet", "Character Sheet"),
         Binding("k", "open_roll", "Roll Dice"),
         Binding("h", "make_hostile", "Make Hostile"),
+        Binding("y", "make_allied", "Make Allied"),
         Binding("o", "open_combat", "Combat Tracker"),
         Binding("f", "open_effects", "Effects"),
         Binding("w", "open_session_workflow", "Session Workflow"),
@@ -287,7 +288,7 @@ class EntityDetailScreen(DismissableScreen):
             return True
         if action in ("open_sheet", "open_roll", "open_effects"):
             return entity["type"] in shm.SHEET_ENTITY_TYPES
-        if action == "make_hostile":
+        if action in ("make_hostile", "make_allied"):
             return entity["type"] == "npc"
         if action == "open_combat":
             return entity["type"] == "encounter"
@@ -323,7 +324,10 @@ class EntityDetailScreen(DismissableScreen):
                 Button("Effects", id="btn-effects", variant="default"),
             )
         if entity["type"] == "npc":
-            await actions.mount(Button("Make Hostile", id="btn-hostile", variant="error"))
+            await actions.mount(
+                Button("Make Hostile", id="btn-hostile", variant="error"),
+                Button("Make Allied", id="btn-allied", variant="success"),
+            )
         if entity["type"] == "encounter":
             await actions.mount(Button("Combat Tracker", id="btn-combat", variant="warning"))
         if entity["type"] == "session":
@@ -383,6 +387,8 @@ class EntityDetailScreen(DismissableScreen):
             self.action_open_roll()
         elif event.button.id == "btn-hostile":
             self.action_make_hostile()
+        elif event.button.id == "btn-allied":
+            self.action_make_allied()
         elif event.button.id == "btn-combat":
             self.action_open_combat()
         elif event.button.id == "btn-effects":
@@ -417,6 +423,29 @@ class EntityDetailScreen(DismissableScreen):
                 ConfirmScreen(f"Create a hostile Enemy version of {entity['name']}?"),
                 callback=self._on_make_hostile_confirmed,
             )
+
+    def action_make_allied(self):
+        entity = db.get_entity(self.entity_id)
+        if entity and entity["type"] == "npc":
+            self.app.push_screen(
+                ConfirmScreen(f"Create an allied Enemy version of {entity['name']}?"),
+                callback=self._on_make_allied_confirmed,
+            )
+
+    def _on_make_allied_confirmed(self, confirmed: bool):
+        if not confirmed:
+            return
+        entity = db.get_entity(self.entity_id)
+        fields = entity["fields"]
+        prefill = {
+            "name": f"{entity['name']} (Allied)",
+            "creature_type": fields.get("race", ""),
+            "alignment": fields.get("alignment", ""),
+        }
+        self.app.push_screen(
+            WizardScreen("enemy", "quick", prefill=prefill, link_to_npc_id=self.entity_id, link_rel_type="allied form of"),
+            callback=lambda _: self._render_detail(),
+        )
 
     def _on_make_hostile_confirmed(self, confirmed: bool):
         if not confirmed:

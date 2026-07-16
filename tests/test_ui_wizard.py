@@ -98,6 +98,102 @@ def test_make_hostile_yes_then_wizard_cancel_creates_nothing(monkeypatch, tmp_pa
     run(scenario)
 
 
+def test_make_allied_no_creates_nothing(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    db.create_entity("npc", "Elara the Sage", {}, "")
+
+    async def scenario():
+        app = DMApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            await pilot.press("n")
+            await pilot.pause()
+            table = app.screen.query_one("#entity-table")
+            table.move_cursor(row=0)
+            await pilot.pause()
+            app.screen.action_open_selected()
+            await pilot.pause()
+            npc_detail = app.screen
+            npc_detail.action_make_allied()
+            await pilot.pause()
+            await pilot.click("#btn-no")
+            await pilot.pause()
+            assert app.screen is npc_detail
+            assert db.list_entities("enemy") == []
+
+    run(scenario)
+
+
+def test_make_allied_yes_opens_wizard_with_allied_rel_type(monkeypatch, tmp_path):
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    db.create_entity("npc", "Elara the Sage", {}, "")
+
+    async def scenario():
+        from screens.wizard import WizardScreen
+        app = DMApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            await pilot.press("n")
+            await pilot.pause()
+            table = app.screen.query_one("#entity-table")
+            table.move_cursor(row=0)
+            await pilot.pause()
+            app.screen.action_open_selected()
+            await pilot.pause()
+            npc_detail = app.screen
+            npc_detail.action_make_allied()
+            await pilot.pause()
+            await pilot.click("#btn-yes")
+            await pilot.pause()
+            wiz = app.screen
+            assert isinstance(wiz, WizardScreen)
+            assert wiz.link_rel_type == "allied form of"
+            assert wiz.link_to_npc_id is not None
+
+            await pilot.press("escape")
+            await pilot.pause()
+            assert db.list_entities("enemy") == []
+            assert db.list_relationships() == []
+
+    run(scenario)
+
+
+def test_make_allied_prefill_name_suffix(monkeypatch, tmp_path):
+    """The prefilled name for an allied form appends (Allied), not (Hostile)."""
+    monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
+    db.init_db()
+    db.create_entity("npc", "Elara the Sage", {}, "")
+
+    async def scenario():
+        from screens.wizard import WizardScreen
+        app = DMApp()
+        async with app.run_test(size=(120, 50)) as pilot:
+            await pilot.pause()
+            await pilot.press("n")
+            await pilot.pause()
+            table = app.screen.query_one("#entity-table")
+            table.move_cursor(row=0)
+            await pilot.pause()
+            app.screen.action_open_selected()
+            await pilot.pause()
+            npc_detail = app.screen
+            npc_detail.action_make_allied()
+            await pilot.pause()
+            await pilot.click("#btn-yes")
+            await pilot.pause()
+            wiz = app.screen
+            assert isinstance(wiz, WizardScreen)
+            assert "Allied" in wiz.data["name"]
+            assert "Hostile" not in wiz.data["name"]
+
+            await pilot.press("escape")
+            await pilot.pause()
+
+    run(scenario)
+
+
 def test_wizard_buttons_only_appear_for_supported_entity_types(monkeypatch, tmp_path):
     monkeypatch.setenv("DM_DB_PATH", str(tmp_path / "campaign.db"))
     db.init_db()

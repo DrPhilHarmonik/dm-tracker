@@ -156,5 +156,6 @@ RELATIONSHIP_TYPES = [
     "created",
     "related to",
     "hostile form of",
+    "allied form of",
     "summoned by",
 ]

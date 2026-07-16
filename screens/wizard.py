@@ -38,11 +38,12 @@ class WizardScreen(DismissableScreen):
 
     BINDINGS = [Binding("escape", "dismiss_screen", "Back")]
 
-    def __init__(self, entity_type: str, mode: str = "quick", prefill: dict | None = None, link_to_npc_id: int | None = None):
+    def __init__(self, entity_type: str, mode: str = "quick", prefill: dict | None = None, link_to_npc_id: int | None = None, link_rel_type: str = "hostile form of"):
         super().__init__()
         self.entity_type = entity_type
         self.mode = mode
         self.link_to_npc_id = link_to_npc_id
+        self.link_rel_type = link_rel_type
         self.data = {
             "name": "", "race": "", "race_bonus_choices": [], "alignment": "", "role": "", "status": "", "location": "",
             "class_name": classes.CLASSES[0], "level": 1, "cr": "0", "creature_type": "",
@@ -603,7 +604,7 @@ class WizardScreen(DismissableScreen):
         entity_id = db.create_entity(self.entity_type, self.data["name"], flat_fields, "")
 
         if self.link_to_npc_id:
-            db.create_relationship(entity_id, self.link_to_npc_id, "hostile form of", "")
+            db.create_relationship(entity_id, self.link_to_npc_id, self.link_rel_type, "")
 
         self.dismiss(entity_id)
         if self.mode == "quick":
