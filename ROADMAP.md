@@ -7,7 +7,8 @@ HP, conditions, death saves, action economy, spellcasting, summons, combat log),
 active effects, encounter balance, session notes, multi-campaign support, in-session
 quick capture, party rest, party overview, XP tracking, SRD monster reference
 (322 monsters) with Add-to-Campaign, allied NPC combat forms, encounter generator,
-and character sheet export. No phases currently queued.
+and character sheet export. Phases 26-29 planned: quest objectives, relationship
+graph view, calendar/session timeline, and VTT importers.
 
 ---
 
@@ -319,3 +320,58 @@ budget, and returns whichever configuration lands closest to the target. New
 of results (Name, CR, Type, HP, AC, XP); Regenerate reshuffles; "Add All to
 Campaign" creates Enemy entities from the selection. `g` key on dashboard.
 9 new tests, 347 total.
+
+### Phase 26 -- Quest Objectives
+
+**Status: Planned.**
+
+`objectives` key added to quest `fields` schema: a list of `{text, done}` dicts.
+`normalize_special_fields()` handles migration for existing quest records (missing
+key defaults to `[]`). Quest detail screen gains an Objectives section -- a
+DataTable or scrollable checklist with a keybinding to toggle `done` on the
+selected item and a button to add a new objective. Incomplete objective count
+surfaced on quest cards in `EntityListScreen` (e.g. "3 / 5 complete"). Active
+quest incomplete objectives also surfaced in `SessionWorkflowScreen`.
+
+### Phase 27 -- Relationship Graph View
+
+**Status: Planned.**
+
+New `screens/graph.py` -- `RelationshipGraphScreen`. Loads every entity and every
+relationship from the DB; renders as a scrollable adjacency list grouped by entity
+type (each entity is a header, its relationships listed beneath with direction and
+type label). Filter bar narrows to a single entity type. Selecting an entry pushes
+`EntityDetailScreen` for that entity. `R` key on dashboard; also reachable from
+any entity detail view. No external graph library required -- pure Textual widgets
+(DataTable or ListView).
+
+### Phase 28 -- Calendar & Session Timeline
+
+**Status: Planned.**
+
+New `calendar.py`: in-world date type with configurable calendar (standard 12-month
+Gregorian-style by default; Forgotten Realms Calendar of Harptos as a named
+preset). Sessions gain an `in_world_date` field (stored as a string in the
+campaign-defined format). New `TimelineScreen` reachable via `t` on the dashboard:
+sessions sorted by in-world date in a DataTable, each row showing date, session
+name, and a one-line summary (first sentence of notes). Clicking a row navigates
+to that session's detail. Quick capture `[Round N]` prefix gains an optional
+in-world date prefix when a date is set on the active session.
+
+### Phase 29 -- VTT Importers
+
+**Status: Planned.**
+
+Three new importers in `importers/`:
+
+- `foundry.py` -- Foundry VTT actor JSON (exported from the Actors sidebar) →
+  adventurer or enemy entity dict. Maps `system.attributes`, `system.abilities`,
+  `items` (weapons, spells, features) to the app's sheet schema.
+- `roll20.py` -- Roll20 character sheet JSON (exported via the API or community
+  export script) → adventurer entity dict.
+- `ddb_encounter.py` -- D&D Beyond encounter export JSON → encounter entity with
+  linked enemy entities created from the monster stat blocks.
+
+All three wired into the Backup & Restore screen alongside the existing DDB
+character importer. Shared validation via `import_entity()` (additive, warns on
+duplicate names).
