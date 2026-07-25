@@ -93,6 +93,7 @@ class AwardXPScreen(DismissableScreen):
             return
 
         level_ups = []
+        self._level_up_ids: list[int] = []
         for adv in self._adventurers:
             fields = dict(adv["fields"])
             old_xp = fields.get("xp", 0)
@@ -102,6 +103,7 @@ class AwardXPScreen(DismissableScreen):
             sheet_level = int(fields.get("level") or fields.get("sheet", {}).get("level") or 1)
             if xpm.should_level_up(new_xp, sheet_level):
                 level_ups.append(adv["name"])
+                self._level_up_ids.append(adv["id"])
 
         msg = f"[green]Awarded {per_pc:,} XP to each of {n} adventurers.[/green]"
         if level_ups:
@@ -113,3 +115,9 @@ class AwardXPScreen(DismissableScreen):
         self._adventurers = rst.active_adventurers()
         self._rebuild_roster()
         self._update_split_label()
+
+        # Push a LevelUpScreen for each adventurer who just crossed a threshold.
+        if self._level_up_ids:
+            from screens.level_up import LevelUpScreen
+            for adv_id in self._level_up_ids:
+                self.app.push_screen(LevelUpScreen(adv_id))

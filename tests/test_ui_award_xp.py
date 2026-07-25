@@ -125,7 +125,7 @@ def test_award_xp_level_up_message_shown(monkeypatch, tmp_path):
             await pilot.pause()
             screen.query_one("#btn-award").press()
             await pilot.pause()
-            result = str(app.screen.query_one("#xp-result").content)
+            result = str(screen.query_one("#xp-result").content)
             assert "Level up" in result or "LEVEL UP" in result
 
     run(scenario)

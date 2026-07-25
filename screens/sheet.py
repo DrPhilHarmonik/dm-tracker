@@ -54,6 +54,7 @@ class CharacterSheetScreen(Screen):
                 yield ScrollableContainer(Container(id="spells-fields"), id="spells-scroll")
         yield Horizontal(
             Button("Recalculate", id="btn-recalc", variant="primary"),
+            Button("Level Up", id="btn-level-up", variant="warning"),
             Button("Save (Ctrl+S)", id="btn-save", variant="success"),
             Button("Export Sheet", id="btn-export-sheet", variant="default"),
             Button("Cancel", id="btn-cancel", variant="default"),
@@ -71,6 +72,8 @@ class CharacterSheetScreen(Screen):
         await self._build_attacks_tab()
         await self._build_spells_tab()
         self._refresh_computed_displays()
+        if self.entity_type == "enemy":
+            self.query_one("#btn-level-up", Button).display = False
 
     # -- tab builders --------------------------------------------------
 
@@ -463,6 +466,10 @@ class CharacterSheetScreen(Screen):
         db.update_entity(self.entity_id, entity["name"], fields, entity["notes"])
         self.dismiss(True)
 
+    def _open_level_up(self):
+        from screens.level_up import LevelUpScreen
+        self.app.push_screen(LevelUpScreen(self.entity_id))
+
     def action_cancel(self):
         self.dismiss(False)
 
@@ -482,6 +489,8 @@ class CharacterSheetScreen(Screen):
             self.action_cancel()
         elif event.button.id == "btn-recalc":
             self._refresh_computed_displays()
+        elif event.button.id == "btn-level-up":
+            self._open_level_up()
         elif event.button.id == "btn-add-attack":
             self._add_attack()
         elif event.button.id == "btn-remove-attack":

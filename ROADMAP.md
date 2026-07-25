@@ -1,6 +1,6 @@
 # DM Tracker — Build History & Roadmap
 
-30 phases complete, Phases 31-34 planned. The core feature set covers the full D&D 5e session loop:
+31 phases complete, Phases 32-34 planned. The core feature set covers the full D&D 5e session loop:
 character creation (wizard, D&D Beyond import, CSV, Foundry VTT, Roll20),
 character sheets (abilities, combat, skills & saves, attacks, spells), combat
 tracking (initiative, turn order, HP, conditions, death saves, action economy,
@@ -391,15 +391,19 @@ listing items with no owner across all sessions. 21 new tests, 426 total.
 
 ### Phase 31 -- Level-Up Workflow
 
-**Status: Planned.**
-
-`LevelUpScreen` triggered automatically when an adventurer's XP crosses a
-threshold (from `AwardXPScreen` or `PartyOverviewScreen`), or manually from
-`CharacterSheetScreen` via a "Level Up" button. Steps: confirm new level,
-roll (or enter) new HP (hit die + CON mod, with "take average" option),
-update spell slot maximums from `classes.py` tables, display a class-feature
-checklist at the new level (text reference only -- DM applies them). All
-changes persist to `fields["sheet"]` in a single `db.update_entity()` call.
+**Status: Done.** New `levelup.py` module: `average_hp_gain()` (hit die / 2
++ 1 + CON modifier), `apply_level_up()` (increments level, adds HP,
+recalculates hit dice notation, updates spell slot maximums), `slot_table()`
+(full caster / half caster / Warlock pact magic tables for levels 1-20),
+`features_at_level()` (per-class feature reference for levels 2-20, text
+only). New `LevelUpScreen`: shows level change, HP gain input with "Take
+Average" shortcut, spell slot preview, class features reminder; "Apply"
+persists all changes in one `db.update_entity()` call. `AwardXPScreen`
+automatically pushes `LevelUpScreen` for every adventurer who crosses an XP
+threshold after an award. `CharacterSheetScreen` gains a "Level Up" button
+(hidden for enemies). Warlock pact magic handled correctly: slots shift to
+a higher spell level when the old level's entry is absent from the table.
+25 new tests, 451 total.
 
 ### Phase 32 -- Homebrew Monster Builder
 
