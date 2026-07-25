@@ -1,0 +1,25 @@
+{
+  "name": "Goblin Scout",
+  "type": "npc",
+  "system": {
+    "abilities": {
+      "str": {"value": 8},
+      "dex": {"value": 14},
+      "con": {"value": 10},
+      "int": {"value": 10},
+      "wis": {"value": 8},
+      "cha": {"value": 8}
+    },
+    "attributes": {
+      "hp": {"value": 7, "max": 7},
+      "ac": {"value": 15},
+      "movement": {"walk": 30}
+    },
+    "details": {
+      "cr": 0.25,
+      "race": "Humanoid",
+      "biography": {"value": ""}
+    },
+    "skills": {}
+  }
+}

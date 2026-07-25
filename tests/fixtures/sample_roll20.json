@@ -1,0 +1,23 @@
+{
+  "schema_version": 3,
+  "type": "character",
+  "name": "Brynn Stonehaven",
+  "bio": "A dwarf fighter from the northern mountains.",
+  "attribs": [
+    {"name": "strength", "current": 17},
+    {"name": "dexterity", "current": 13},
+    {"name": "constitution", "current": 15},
+    {"name": "intelligence", "current": 10},
+    {"name": "wisdom", "current": 12},
+    {"name": "charisma", "current": 10},
+    {"name": "hp", "current": 45},
+    {"name": "hp_max", "current": 52},
+    {"name": "ac", "current": 18},
+    {"name": "speed", "current": 25},
+    {"name": "level", "current": 5},
+    {"name": "class", "current": "Fighter"},
+    {"name": "race", "current": "Mountain Dwarf"},
+    {"name": "athletics_prof", "current": 1},
+    {"name": "perception_prof", "current": 2}
+  ]
+}

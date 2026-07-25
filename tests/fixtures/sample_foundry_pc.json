@@ -1,0 +1,29 @@
+{
+  "name": "Theodric the Bold",
+  "type": "character",
+  "system": {
+    "abilities": {
+      "str": {"value": 16},
+      "dex": {"value": 13},
+      "con": {"value": 15},
+      "int": {"value": 10},
+      "wis": {"value": 12},
+      "cha": {"value": 14}
+    },
+    "attributes": {
+      "hp": {"value": 38, "max": 45},
+      "ac": {"value": 17},
+      "movement": {"walk": 30}
+    },
+    "details": {
+      "level": {"value": 5},
+      "race": "Human",
+      "class": "Paladin",
+      "biography": {"value": "<p>A devoted servant of <strong>Tyr</strong>.</p>"}
+    },
+    "skills": {
+      "ath": {"value": 1},
+      "prc": {"value": 2}
+    }
+  }
+}

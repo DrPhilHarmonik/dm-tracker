@@ -1,0 +1,8 @@
+{
+  "name": "Goblin Ambush",
+  "monsters": [
+    {"name": "Goblin", "quantity": 3},
+    {"name": "Bugbear", "quantity": 1},
+    {"name": "Xanathar the Beholder", "quantity": 1}
+  ]
+}

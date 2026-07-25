@@ -17,6 +17,9 @@ import classes
 from importers import import_entity
 from importers.ddb import parse_ddb_json
 from importers.csv_import import parse_csv, write_template
+from importers.foundry import parse_foundry_json
+from importers.roll20 import parse_roll20_json
+from importers.ddb_encounter import parse_ddb_encounter, import_encounter
 from models import ENTITY_TYPES, ENTITY_LABELS, ENTITY_LABELS_PLURAL, ENTITY_SCHEMAS, RELATIONSHIP_TYPES
 
 from screens.common import DismissableScreen, PALETTE, format_io_error
@@ -112,6 +115,21 @@ class BackupScreen(DismissableScreen):
                     id="csv-import-actions",
                 ),
                 Static("", id="csv-import-status"),
+                Static("Import Foundry VTT Actor", id="foundry-import-title"),
+                Label("Foundry actor JSON path (exported via Actors > right-click > Export Data):"),
+                Input(value=str(Path.home() / "Downloads" / "actor.json"), id="foundry-import-path"),
+                Button("Import Foundry Actor", id="btn-foundry-import", variant="primary"),
+                Static("", id="foundry-import-status"),
+                Static("Import Roll20 Character", id="roll20-import-title"),
+                Label("Roll20 character JSON path (exported via API or community script):"),
+                Input(value=str(Path.home() / "Downloads" / "character.json"), id="roll20-import-path"),
+                Button("Import Roll20 Character", id="btn-roll20-import", variant="primary"),
+                Static("", id="roll20-import-status"),
+                Static("Import D&D Beyond Encounter", id="ddb-encounter-title"),
+                Label("D&D Beyond encounter JSON path (exported from ddb.ac/encounters):"),
+                Input(value=str(Path.home() / "Downloads" / "encounter.json"), id="ddb-encounter-path"),
+                Button("Import D&D Beyond Encounter", id="btn-ddb-encounter", variant="primary"),
+                Static("", id="ddb-encounter-status"),
                 Button("Back", id="btn-back"),
                 id="backup-container",
             ),
@@ -145,6 +163,12 @@ class BackupScreen(DismissableScreen):
             self._do_csv_import()
         elif event.button.id == "btn-csv-template":
             self._do_csv_template()
+        elif event.button.id == "btn-foundry-import":
+            self._do_foundry_import()
+        elif event.button.id == "btn-roll20-import":
+            self._do_roll20_import()
+        elif event.button.id == "btn-ddb-encounter":
+            self._do_ddb_encounter_import()
         elif event.button.id == "btn-back":
             self.dismiss()
 
@@ -231,5 +255,52 @@ class BackupScreen(DismissableScreen):
         try:
             write_template(template_path)
             status.update(f"[green]Template written to {template_path}[/green]")
+        except Exception as ex:
+            status.update(f"[red]{format_io_error(ex)}[/red]")
+
+    def _do_foundry_import(self):
+        path = Path(self.query_one("#foundry-import-path", Input).value.strip()).expanduser()
+        status = self.query_one("#foundry-import-status", Static)
+        try:
+            parsed = parse_foundry_json(path)
+            result = import_entity(parsed["name"], parsed["entity_type"], parsed["fields"], parsed["notes"])
+            msg = f"[green]Imported '{parsed['name']}' as {parsed['entity_type']}[/green]"
+            if result["warning"]:
+                msg += f"\n[yellow]Warning: {result['warning']}[/yellow]"
+            status.update(msg)
+        except ValueError as ex:
+            status.update(f"[red]{ex}[/red]")
+        except Exception as ex:
+            status.update(f"[red]{format_io_error(ex)}[/red]")
+
+    def _do_roll20_import(self):
+        path = Path(self.query_one("#roll20-import-path", Input).value.strip()).expanduser()
+        status = self.query_one("#roll20-import-status", Static)
+        try:
+            parsed = parse_roll20_json(path)
+            result = import_entity(parsed["name"], parsed["entity_type"], parsed["fields"], parsed["notes"])
+            msg = f"[green]Imported '{parsed['name']}' as adventurer[/green]"
+            if result["warning"]:
+                msg += f"\n[yellow]Warning: {result['warning']}[/yellow]"
+            status.update(msg)
+        except ValueError as ex:
+            status.update(f"[red]{ex}[/red]")
+        except Exception as ex:
+            status.update(f"[red]{format_io_error(ex)}[/red]")
+
+    def _do_ddb_encounter_import(self):
+        path = Path(self.query_one("#ddb-encounter-path", Input).value.strip()).expanduser()
+        status = self.query_one("#ddb-encounter-status", Static)
+        try:
+            parsed = parse_ddb_encounter(path)
+            summary = import_encounter(parsed)
+            n = len(summary["created"])
+            msg = f"[green]Imported encounter '{summary['encounter_name']}' with {n} enemy/enemies[/green]"
+            if summary["skipped_srd_lookup"]:
+                skipped = ", ".join(summary["skipped_srd_lookup"])
+                msg += f"\n[yellow]Not found in SRD (stats need manual fill): {skipped}[/yellow]"
+            status.update(msg)
+        except ValueError as ex:
+            status.update(f"[red]{ex}[/red]")
         except Exception as ex:
             status.update(f"[red]{format_io_error(ex)}[/red]")

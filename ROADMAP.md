@@ -1,14 +1,14 @@
 # DM Tracker — Build History & Roadmap
 
-28 phases complete. The core feature set covers the full D&D 5e session loop:
-character creation (wizard, D&D Beyond import, CSV), character sheets (abilities,
-combat, skills & saves, attacks, spells), combat tracking (initiative, turn order,
-HP, conditions, death saves, action economy, spellcasting, summons, combat log),
-active effects, encounter balance, session notes, multi-campaign support, in-session
-quick capture, party rest, party overview, XP tracking, SRD monster reference
-(322 monsters) with Add-to-Campaign, allied NPC combat forms, encounter generator,
-quest objectives, relationship browser, session timeline, and character sheet export.
-Phase 29 (VTT importers) planned.
+29 phases complete. The core feature set covers the full D&D 5e session loop:
+character creation (wizard, D&D Beyond import, CSV, Foundry VTT, Roll20),
+character sheets (abilities, combat, skills & saves, attacks, spells), combat
+tracking (initiative, turn order, HP, conditions, death saves, action economy,
+spellcasting, summons, combat log), active effects, encounter balance, session
+notes, multi-campaign support, in-session quick capture, party rest, party
+overview, XP tracking, SRD monster reference (322 monsters) with Add-to-Campaign,
+allied NPC combat forms, encounter generator, quest objectives, relationship
+browser, session timeline, and character sheet export. No phases currently queued.
 
 ---
 
@@ -355,18 +355,23 @@ the session's `EntityDetailScreen`. `in_game_date` remains a freeform text field
 
 ### Phase 29 -- VTT Importers
 
-**Status: Planned.**
+**Status: Done.** Three new importers in `importers/`:
 
-Three new importers in `importers/`:
+- `foundry.py` -- Foundry VTT actor JSON (exported via Actors sidebar >
+  right-click > Export Data). Actor type `"character"` → adventurer; `"npc"` →
+  enemy with CR parsed from `system.details.cr` (fractional CRs mapped to
+  `"1/8"`, `"1/4"`, `"1/2"`). Skill proficiencies read from Foundry skill
+  abbreviations (`"ath"`, `"prc"`, etc.). Biography HTML stripped.
+- `roll20.py` -- Roll20 "D&D 5e by Roll20" sheet JSON (community API export,
+  schema_version 3). Accepts bare character object or `{"characters": [...]}` 
+  wrapper. Attributes read from flat `attribs` list; skill proficiencies from
+  `<skill>_prof` convention (1 = proficient, 2 = expertise).
+- `ddb_encounter.py` -- D&D Beyond encounter JSON → one encounter entity plus
+  one enemy per monster type, linked via `involves` relationships. Monster stat
+  blocks resolved against the local SRD; unknowns created with minimal stats and
+  a note flagging manual completion. Accepts `"quantity"`, `"count"`, or
+  `"number"` for per-monster count; `"monsters"` or `"creatures"` for the list
+  key. Also fixed a latent bug in `encounter_gen.py` where `ac`/`hp_max`/
+  resistances were passed as flat entity fields instead of inside the sheet.
 
-- `foundry.py` -- Foundry VTT actor JSON (exported from the Actors sidebar) →
-  adventurer or enemy entity dict. Maps `system.attributes`, `system.abilities`,
-  `items` (weapons, spells, features) to the app's sheet schema.
-- `roll20.py` -- Roll20 character sheet JSON (exported via the API or community
-  export script) → adventurer entity dict.
-- `ddb_encounter.py` -- D&D Beyond encounter export JSON → encounter entity with
-  linked enemy entities created from the monster stat blocks.
-
-All three wired into the Backup & Restore screen alongside the existing DDB
-character importer. Shared validation via `import_entity()` (additive, warns on
-duplicate names).
+All three wired into Backup & Restore. 32 new tests, 405 total.
