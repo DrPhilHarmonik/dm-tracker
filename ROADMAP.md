@@ -1,6 +1,6 @@
 # DM Tracker — Build History & Roadmap
 
-29 phases complete. The core feature set covers the full D&D 5e session loop:
+30 phases complete, Phases 31-34 planned. The core feature set covers the full D&D 5e session loop:
 character creation (wizard, D&D Beyond import, CSV, Foundry VTT, Roll20),
 character sheets (abilities, combat, skills & saves, attacks, spells), combat
 tracking (initiative, turn order, HP, conditions, death saves, action economy,
@@ -8,7 +8,7 @@ spellcasting, summons, combat log), active effects, encounter balance, session
 notes, multi-campaign support, in-session quick capture, party rest, party
 overview, XP tracking, SRD monster reference (322 monsters) with Add-to-Campaign,
 allied NPC combat forms, encounter generator, quest objectives, relationship
-browser, session timeline, and character sheet export. No phases currently queued.
+browser, session timeline, and character sheet export.
 
 ---
 
@@ -375,3 +375,65 @@ the session's `EntityDetailScreen`. `in_game_date` remains a freeform text field
   resistances were passed as flat entity fields instead of inside the sheet.
 
 All three wired into Backup & Restore. 32 new tests, 405 total.
+
+### Phase 30 -- Party Loot Tracker
+
+**Status: Done.** `fields["loot"]` added as a special field on session
+entities: a list of `{name, qty, value, owner}` dicts. `normalize_loot()`
+validates and normalizes entries; `normalize_special_fields()` handles
+migration (missing key defaults to `[]`). New `db` helpers:
+`add_loot_entry()`, `assign_loot()`, `remove_loot_entry()`,
+`unassigned_loot()`. New `LootScreen` reachable from session entity detail
+(`l` keybinding, "Loot" button): DataTable of loot entries with Add / Assign
+/ Unassign / Remove actions; "Assign" opens a picker over active adventurers
+and sets `owner`. `PartyOverviewScreen` gains an Unassigned Loot section
+listing items with no owner across all sessions. 21 new tests, 426 total.
+
+### Phase 31 -- Level-Up Workflow
+
+**Status: Planned.**
+
+`LevelUpScreen` triggered automatically when an adventurer's XP crosses a
+threshold (from `AwardXPScreen` or `PartyOverviewScreen`), or manually from
+`CharacterSheetScreen` via a "Level Up" button. Steps: confirm new level,
+roll (or enter) new HP (hit die + CON mod, with "take average" option),
+update spell slot maximums from `classes.py` tables, display a class-feature
+checklist at the new level (text reference only -- DM applies them). All
+changes persist to `fields["sheet"]` in a single `db.update_entity()` call.
+
+### Phase 32 -- Homebrew Monster Builder
+
+**Status: Planned.**
+
+New `HomebrewScreen` accessible from the Monster Reference screen. Full stat
+block editor: name, CR, creature type, ability scores, AC, HP, speed, attacks
+(name / bonus / damage), special abilities (name / description). Saves to
+`data/homebrew_monsters.json` alongside `data/monsters.json`. `srd.py`
+loads both files at import time and merges them; `MONSTERS` list contains
+SRD + homebrew. Homebrew monsters are marked with a `"source": "homebrew"`
+key so they can be filtered or deleted from the builder screen.
+
+### Phase 33 -- Faction Reputation
+
+**Status: Planned.**
+
+`fields["reputation"]` added to faction entities: an integer score (default
+0) and a `reputation_log` list of `{date, delta, reason}` entries. Faction
+detail screen gains a reputation bar (color-coded: green positive, red
+negative) and a scrollable log. New `AdjustReputationScreen` (from faction
+detail) lets the DM enter a delta (+/-) and a reason; persists to the log.
+`PartyOverviewScreen` gains a Faction Standing section showing all factions
+with their current score color-coded. All reputation logic in a new
+`reputation.py` module.
+
+### Phase 34 -- Notes & Tag Browser
+
+**Status: Planned.**
+
+`#tag` tokens parsed from note text across all entity types (plain Python
+regex, no schema change). New `tags.py` module: `extract_tags(text)` returns
+a sorted deduplicated list; `entities_by_tag(tag)` queries all notes for
+matches. New `TagBrowserScreen` (`#` key on dashboard): left panel lists all
+tags sorted by frequency; selecting one shows matching entities in a right
+panel. Clicking an entity opens its `EntityDetailScreen`. `QuickCaptureModal`
+gains tag autocomplete (beyond entity names) when the user types `#`.

@@ -11,7 +11,7 @@ import combat as combat_mod
 
 DEFAULT_DB_PATH = Path.home() / ".config" / "dm" / "campaign.db"
 
-SPECIAL_FIELD_KEYS = {"sheet", "active_effects", "combat", "objectives"}
+SPECIAL_FIELD_KEYS = {"sheet", "active_effects", "combat", "objectives", "loot"}
 
 
 def db_path() -> Path:
@@ -96,6 +96,25 @@ def validate_name(name) -> str:
     return name.strip()
 
 
+def normalize_loot(loot: list) -> list[dict]:
+    if not isinstance(loot, list):
+        raise ValueError("fields['loot'] must be a list")
+    result = []
+    for entry in loot:
+        if not isinstance(entry, dict):
+            raise ValueError("each loot entry must be an object")
+        name = str(entry.get("name") or "").strip()
+        if not name:
+            raise ValueError("loot entry name must be non-empty")
+        result.append({
+            "name": name,
+            "qty": str(entry.get("qty") or "1").strip() or "1",
+            "value": str(entry.get("value") or "").strip(),
+            "owner": str(entry.get("owner") or "").strip(),
+        })
+    return result
+
+
 def normalize_objectives(objectives: list) -> list[dict]:
     if not isinstance(objectives, list):
         raise ValueError("fields['objectives'] must be a list")
@@ -144,6 +163,12 @@ def normalize_special_fields(fields: dict, type_: str | None = None) -> dict:
         fields["objectives"] = normalize_objectives(fields["objectives"])
     elif type_ == "quest":
         fields["objectives"] = []
+    if "loot" in fields:
+        if type_ is not None and type_ != "session":
+            raise ValueError("fields['loot'] is only valid for sessions")
+        fields["loot"] = normalize_loot(fields["loot"])
+    elif type_ == "session":
+        fields["loot"] = []
     return fields
 
 
@@ -393,3 +418,59 @@ def toggle_objective(quest_id: int, index: int) -> None:
     objectives[index]["done"] = not objectives[index]["done"]
     fields["objectives"] = objectives
     update_entity(quest_id, quest["name"], fields, quest["notes"])
+
+
+def add_loot_entry(session_id: int, name: str, qty: str = "1", value: str = "") -> None:
+    session = get_entity(session_id)
+    if session is None:
+        raise ValueError(f"No entity with id {session_id}")
+    if session["type"] != "session":
+        raise ValueError("loot can only be added to sessions")
+    fields = dict(session["fields"])
+    loot = normalize_loot(fields.get("loot", []))
+    loot.append({"name": name.strip(), "qty": qty.strip() or "1", "value": value.strip(), "owner": ""})
+    fields["loot"] = loot
+    update_entity(session_id, session["name"], fields, session["notes"])
+
+
+def assign_loot(session_id: int, index: int, owner: str) -> None:
+    session = get_entity(session_id)
+    if session is None:
+        raise ValueError(f"No entity with id {session_id}")
+    if session["type"] != "session":
+        raise ValueError("loot can only be assigned on sessions")
+    fields = dict(session["fields"])
+    loot = normalize_loot(fields.get("loot", []))
+    if index < 0 or index >= len(loot):
+        raise IndexError("loot index out of range")
+    loot[index]["owner"] = owner.strip()
+    fields["loot"] = loot
+    update_entity(session_id, session["name"], fields, session["notes"])
+
+
+def remove_loot_entry(session_id: int, index: int) -> None:
+    session = get_entity(session_id)
+    if session is None:
+        raise ValueError(f"No entity with id {session_id}")
+    if session["type"] != "session":
+        raise ValueError("loot can only be removed from sessions")
+    fields = dict(session["fields"])
+    loot = normalize_loot(fields.get("loot", []))
+    if index < 0 or index >= len(loot):
+        raise IndexError("loot index out of range")
+    loot.pop(index)
+    fields["loot"] = loot
+    update_entity(session_id, session["name"], fields, session["notes"])
+
+
+def unassigned_loot() -> list[dict]:
+    """Return all unassigned loot entries across all sessions.
+
+    Each entry is the loot dict augmented with 'session_id' and 'session_name'.
+    """
+    result = []
+    for session in list_entities("session"):
+        for entry in session["fields"].get("loot", []):
+            if not entry.get("owner"):
+                result.append({**entry, "session_id": session["id"], "session_name": session["name"]})
+    return result

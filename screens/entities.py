@@ -327,6 +327,7 @@ class EntityDetailScreen(DismissableScreen):
         Binding("o", "open_combat", "Combat Tracker"),
         Binding("f", "open_effects", "Effects"),
         Binding("w", "open_session_workflow", "Session Workflow"),
+        Binding("l", "open_loot", "Loot"),
         Binding("a", "add_objective", "Add Objective"),
         Binding("t", "toggle_objective", "Toggle Objective"),
         Binding("R", "relationship_browser", "Relationships"),
@@ -349,7 +350,7 @@ class EntityDetailScreen(DismissableScreen):
             return entity["type"] == "npc"
         if action == "open_combat":
             return entity["type"] == "encounter"
-        if action == "open_session_workflow":
+        if action in ("open_session_workflow", "open_loot"):
             return entity["type"] == "session"
         if action in ("add_objective", "toggle_objective"):
             return entity["type"] == "quest"
@@ -394,7 +395,10 @@ class EntityDetailScreen(DismissableScreen):
         if entity["type"] == "encounter":
             await actions.mount(Button("Combat Tracker", id="btn-combat", variant="warning"))
         if entity["type"] == "session":
-            await actions.mount(Button("Session Workflow", id="btn-session-workflow", variant="warning"))
+            await actions.mount(
+                Button("Session Workflow", id="btn-session-workflow", variant="warning"),
+                Button("Loot", id="btn-loot", variant="success"),
+            )
         if entity["type"] == "quest":
             await actions.mount(
                 Button("Add Objective", id="btn-add-objective", variant="success"),
@@ -477,6 +481,8 @@ class EntityDetailScreen(DismissableScreen):
             self.action_open_effects()
         elif event.button.id == "btn-session-workflow":
             self.action_open_session_workflow()
+        elif event.button.id == "btn-loot":
+            self.action_open_loot()
         elif event.button.id == "btn-add-objective":
             self.action_add_objective()
         elif event.button.id == "btn-toggle-objective":
@@ -565,6 +571,12 @@ class EntityDetailScreen(DismissableScreen):
         if entity and entity["type"] == "session":
             from screens.session_workflow import SessionWorkflowScreen
             self.app.push_screen(SessionWorkflowScreen(self.entity_id), callback=lambda _: self._render_detail())
+
+    def action_open_loot(self):
+        entity = db.get_entity(self.entity_id)
+        if entity and entity["type"] == "session":
+            from screens.loot import LootScreen
+            self.app.push_screen(LootScreen(self.entity_id), callback=lambda _: self._render_detail())
 
     def action_add_objective(self):
         entity = db.get_entity(self.entity_id)

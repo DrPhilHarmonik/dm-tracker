@@ -10,7 +10,7 @@ import sheet as shm
 import combat as cbt
 import effects as fx
 import xp as xpm
-from screens.common import DismissableScreen, tint_border
+from screens.common import DismissableScreen, PALETTE, tint_border
 
 
 class PartyOverviewScreen(DismissableScreen):
@@ -24,6 +24,8 @@ class PartyOverviewScreen(DismissableScreen):
         yield Container(
             Static("", id="overview-status"),
             DataTable(id="party-table", show_cursor=False),
+            Static("Unassigned Loot", id="loot-heading"),
+            DataTable(id="loot-table", show_cursor=False),
             id="overview-wrap",
         )
         yield Footer()
@@ -36,10 +38,14 @@ class PartyOverviewScreen(DismissableScreen):
             "Name", "Insp", "Class", "HP", "AC",
             "XP", "Conditions", "Spell Slots", "Active Effects",
         )
+        loot_table = self.query_one("#loot-table", DataTable)
+        loot_table.add_columns("Item", "Qty", "Value", "Session")
         self._load_data()
+        self._load_loot()
 
     async def on_screen_resume(self):
         self._load_data()
+        self._load_loot()
 
     def _load_data(self):
         table = self.query_one("#party-table", DataTable)
@@ -96,8 +102,26 @@ class PartyOverviewScreen(DismissableScreen):
                 effects_str,
             )
 
+    def _load_loot(self):
+        loot_table = self.query_one("#loot-table", DataTable)
+        loot_table.clear()
+        unassigned = db.unassigned_loot()
+        heading = self.query_one("#loot-heading", Static)
+        if not unassigned:
+            heading.update("[dim]Unassigned Loot -- none[/dim]")
+        else:
+            heading.update(f"Unassigned Loot ({len(unassigned)})")
+            for entry in unassigned:
+                loot_table.add_row(
+                    Text(entry["name"], style=f"bold {PALETTE.get('item', '')}"),
+                    entry.get("qty", "1"),
+                    entry.get("value", "") or "--",
+                    Text(entry["session_name"], style="dim"),
+                )
+
     def action_refresh_data(self):
         self._load_data()
+        self._load_loot()
 
 
 # -- helpers ------------------------------------------------------------------
