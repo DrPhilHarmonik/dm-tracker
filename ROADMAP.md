@@ -1,14 +1,14 @@
 # DM Tracker — Build History & Roadmap
 
-27 phases complete. The core feature set covers the full D&D 5e session loop:
+28 phases complete. The core feature set covers the full D&D 5e session loop:
 character creation (wizard, D&D Beyond import, CSV), character sheets (abilities,
 combat, skills & saves, attacks, spells), combat tracking (initiative, turn order,
 HP, conditions, death saves, action economy, spellcasting, summons, combat log),
 active effects, encounter balance, session notes, multi-campaign support, in-session
 quick capture, party rest, party overview, XP tracking, SRD monster reference
 (322 monsters) with Add-to-Campaign, allied NPC combat forms, encounter generator,
-quest objectives, relationship browser, and character sheet export. Phases 28-29
-planned: calendar/session timeline and VTT importers.
+quest objectives, relationship browser, session timeline, and character sheet export.
+Phase 29 (VTT importers) planned.
 
 ---
 
@@ -343,16 +343,15 @@ pure Textual widgets. 4 new tests, 358 total.
 
 ### Phase 28 -- Calendar & Session Timeline
 
-**Status: Planned.**
-
-New `calendar.py`: in-world date type with configurable calendar (standard 12-month
-Gregorian-style by default; Forgotten Realms Calendar of Harptos as a named
-preset). Sessions reuse the existing `in_game_date` field (stored as a string in the
-campaign-defined format). New `TimelineScreen` reachable via `t` on the dashboard:
-sessions sorted by in-world date in a DataTable, each row showing date, session
-name, and a one-line summary (first sentence of notes). Clicking a row navigates
-to that session's detail. Quick capture `[Round N]` prefix gains an optional
-in-world date prefix when a date is set on the active session.
+**Status: Done.** New `cal.py`: named calendar presets (Gregorian and Forgotten
+Realms Calendar of Harptos -- 12 months of 30 days each plus 5 intercalary days:
+Midwinter, Greengrass, Midsummer, Highharvestide, Feast of the Moon).
+`sort_sessions()` orders session entities by `session_number` ascending; sessions
+without one sort last. New `TimelineScreen` (`t` key on dashboard): DataTable of
+all sessions showing #, In-Game Date, Real Date, Name, and notes preview (first
+60 chars). Sessions without a number sort to the bottom. Selecting a row opens
+the session's `EntityDetailScreen`. `in_game_date` remains a freeform text field
+-- the DM writes whatever format suits their campaign. 15 new tests, 373 total.
 
 ### Phase 29 -- VTT Importers
 

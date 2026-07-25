@@ -26,6 +26,7 @@ from screens.award_xp import AwardXPScreen
 from screens.monster_ref import MonsterRefScreen
 from screens.encounter_gen import EncounterGenScreen
 from screens.relationships import RelationshipBrowserScreen
+from screens.timeline import TimelineScreen
 from screens.common import DismissableScreen, PALETTE
 
 class Dashboard(Screen):
@@ -49,6 +50,7 @@ class Dashboard(Screen):
         Binding("m", "monster_ref", "Monster Ref"),
         Binding("g", "encounter_gen", "Gen Encounter"),
         Binding("R", "relationship_browser", "Relationships"),
+        Binding("t", "timeline", "Timeline"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -154,6 +156,9 @@ class Dashboard(Screen):
 
     def action_relationship_browser(self):
         self.app.push_screen(RelationshipBrowserScreen())
+
+    def action_timeline(self):
+        self.app.push_screen(TimelineScreen())
 
     def action_backup(self):
         self.app.push_screen(BackupScreen())
